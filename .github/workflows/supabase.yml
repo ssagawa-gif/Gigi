@@ -32,6 +32,20 @@ jobs:
       - name: Install psql
         if: steps.check.outputs.ready == 'true'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Test the database connection
+        if: steps.check.outputs.ready == 'true'
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          # Shows user/host/port (never the password) and the exact reason if it fails.
+          SAFE=$(printf '%s' "$DB" | sed -E 's#(://[^:]+):[^@]*@#\1:***@#')
+          echo "Connecting to: $SAFE"
+          case "$DB" in *"["*|*"]"*) echo "::error::SUPABASE_DB_URL still contains [ or ] — replace [YOUR-PASSWORD] (with the brackets) by the password.";; esac
+          case "$DB" in *"db.$PROJECT_REF.supabase.co"*) echo "::error::This is the Direct connection URI. Use the Session pooler URI (host ends with pooler.supabase.com).";; esac
+          if ! psql "$DB" -v ON_ERROR_STOP=1 -tAc 'select 1' > /dev/null 2> err.txt; then
+            echo "::error::Cannot connect: $(head -c 300 err.txt | tr '\n' ' ')"; exit 1
+          fi
+          echo "Connection OK"
       - name: Apply database schema and updates (safe to re-run)
         if: steps.check.outputs.ready == 'true'
         env:
