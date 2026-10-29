@@ -22,9 +22,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        # Supabase URL + publishable key come from .env.production (both are public by design).
         env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_WAITLIST_URL: ${{ vars.VITE_WAITLIST_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:

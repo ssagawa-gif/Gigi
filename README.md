@@ -44,13 +44,12 @@ The source code lives in this repository. No health data is ever stored in the c
 5. In **Project Settings → API**, copy the **Project URL** and the **anon public** key.
 
 ### 3. Connect the site to Supabase and publish
-1. On GitHub, go to **Settings → Secrets and variables → Actions → Variables → New repository variable** and add:
-   - `VITE_SUPABASE_URL` = the Project URL
-   - `VITE_SUPABASE_ANON_KEY` = the anon public key. This key is safe to expose: protection comes from the database rules.
-   - (Optional) `VITE_WAITLIST_URL` = your Tally form link. Without it, the app uses its own waitlist, saved in the `waitlist` table.
-2. In **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**.
-3. In **Actions → Deploy to GitHub Pages**, click **Run workflow**. About 2 minutes later, the site is at `https://<user>.github.io/<repo>/`.
+1. Put the **Project URL** and the **anon / publishable** key in `.env.production` (already done for GiGi's project). Both are public by design: protection comes from the database rules. Never commit the `service_role` / secret key or the database password.
+2. (Optional) To use a Tally form for the waitlist, add a repository variable `VITE_WAITLIST_URL` under **Settings → Secrets and variables → Actions → Variables**. Without it, the app uses its own waitlist, saved in the `waitlist` table.
+3. In **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**. Every push to `main` then republishes the site at `https://<user>.github.io/<repo>/` (GiGi: https://ssagawa-gif.github.io/Gigi/).
 4. In Supabase, under **Authentication → URL Configuration**, set **Site URL** to that address.
+
+The demo file (`npm run build:html`) ignores `.env.production` and always runs in sample mode.
 
 ### 4. Onboard doctors
 1. The doctor opens `…/#/doctor/login`, creates an account and fills in the profile.
