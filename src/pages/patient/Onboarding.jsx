@@ -115,8 +115,9 @@ export function Auth({ role = 'patient' }) {
 
   return (
     <Phone>
-      <TopBar />
-      <h1>{role === 'doctor' ? t('auth.doctorTitle') : mode === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle')}</h1>
+      <TopBar right={null} />
+      <LangPicker compact />
+      <h1 className="mt16">{role === 'doctor' ? t('auth.doctorTitle') : mode === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle')}</h1>
       <p className="muted small">{role === 'doctor' ? t('auth.doctorSub') : t('auth.sub')}</p>
       <form onSubmit={submit}>
         {mode === 'signup' && (<><label className="lbl">{t('auth.name')}</label><input className="field" required value={form.full_name} onChange={set('full_name')} placeholder={role === 'doctor' ? 'Dr Marta Puig' : 'Laura'} /></>)}
