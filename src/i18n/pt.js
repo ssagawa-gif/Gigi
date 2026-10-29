@@ -210,4 +210,6 @@ export default {
   'admin.team.removed': '{email} saiu da equipe',
   'admin.team.invalid': 'Digite um e-mail válido.',
   'notif.admin_added': 'Você entrou na equipe GiGi. Agora você pode aprovar médicos.',
+  'admin.signedInAs': 'Você está conectada como {email}, que não é uma conta da equipe GiGi.',
+  'admin.switch': 'Sair e entrar com outra conta',
 };

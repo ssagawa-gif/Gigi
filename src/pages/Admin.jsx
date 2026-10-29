@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Phone, TopBar, Initials, Loading, Empty, ConfirmButton } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import { useI18n } from '../i18n/index.jsx';
@@ -18,7 +19,7 @@ export default function Admin() {
   }, []);
 
   if (loading) return <Phone wide><TopBar title={t('admin.title')} /><Loading /></Phone>;
-  if (!data?.admin) return <Phone wide><TopBar title={t('admin.title')} /><Empty>{t('admin.notAllowed')}</Empty></Phone>;
+  if (!data?.admin) return <NotAdmin />;
 
   const list = data.doctors.filter((d) => d.review_status === tab);
   const waiting = data.doctors.filter((d) => d.review_status === 'pending').length;
@@ -83,6 +84,23 @@ export default function Admin() {
         )) : <Empty>{t('admin.none')}</Empty>}
       </div>
       </>)}
+    </Phone>
+  );
+}
+
+/** Shown to signed-in accounts that are not on the GiGi team: says which account is open and offers to switch. */
+function NotAdmin() {
+  const { t } = useI18n();
+  const { session, refresh } = useSession();
+  const nav = useNavigate();
+  return (
+    <Phone wide>
+      <TopBar title={t('admin.title')} />
+      <div className="card">
+        <p style={{ marginTop: 0 }}>{t('admin.notAllowed')}</p>
+        <p className="small muted">{t('admin.signedInAs', { email: session?.user?.email || '' })}</p>
+        <button className="btn btn-primary mt8" onClick={async () => { await api.signOut(); await refresh(); nav('/auth?mode=login'); }}>{t('admin.switch')}</button>
+      </div>
     </Phone>
   );
 }
