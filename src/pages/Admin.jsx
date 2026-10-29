@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Phone, TopBar, Initials, Loading, Empty } from '../components/ui.jsx';
+import { Phone, TopBar, Initials, Loading, Empty, ConfirmButton } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { api } from '../lib/api.js';
@@ -9,6 +9,7 @@ import { useSession, useData } from '../lib/session.jsx';
 export default function Admin() {
   const { t, fmtDate, fmtMoney } = useI18n();
   const { showToast } = useSession();
+  const [section, setSection] = useState('doctors');
   const [tab, setTab] = useState('pending');
   const [busy, setBusy] = useState(null);
   const { data, loading } = useData(async () => {
@@ -34,9 +35,16 @@ export default function Admin() {
   return (
     <Phone wide>
       <div className="row between">
-        <h1>{t('admin.title')}</h1>
+        <h1>{section === 'team' ? t('admin.tab.team') : t('admin.title')}</h1>
         {waiting > 0 && <span className="badge cherry">{t('admin.new', { n: waiting })}</span>}
       </div>
+      <div className="chips mt8" role="tablist">
+        {['doctors', 'team'].map((k) => (
+          <button key={k} className={'chip' + (section === k ? ' on' : '')} style={{ fontWeight: 600 }} onClick={() => setSection(k)}>{t('admin.tab.' + k)}</button>
+        ))}
+      </div>
+      <div className="divider" />
+      {section === 'team' ? <Team /> : (<>
       <p className="small muted">{t('admin.hint')}</p>
       <div className="chips mt8">
         {['pending', 'approved', 'rejected'].map((k) => (
@@ -74,6 +82,56 @@ export default function Admin() {
           </div>
         )) : <Empty>{t('admin.none')}</Empty>}
       </div>
+      </>)}
     </Phone>
+  );
+}
+
+/** GiGi team: add or remove administrators by e-mail. */
+function Team() {
+  const { t } = useI18n();
+  const { showToast } = useSession();
+  const [email, setEmail] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const { data, loading } = useData(() => api.adminListTeam(), []);
+
+  async function add(e) {
+    e.preventDefault(); setErr('');
+    const v = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { setErr(t('admin.team.invalid')); return; }
+    setBusy(true);
+    try { await api.adminAddAdmin(v); setEmail(''); showToast(t('admin.team.added', { email: v })); }
+    catch (ex) { setErr(ex.message.includes('invalid') ? t('admin.team.invalid') : ex.message); }
+    finally { setBusy(false); }
+  }
+  async function remove(v) { await api.adminRemoveAdmin(v); showToast(t('admin.team.removed', { email: v })); }
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <h3>{t('admin.team.title')}</h3>
+      <p className="small muted">{t('admin.team.hint')}</p>
+      <form className="row mt8" onSubmit={add}>
+        <input className="field grow" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('admin.team.email')} aria-label={t('admin.team.email')} />
+        <button className="btn btn-primary btn-small" style={{ padding: '12px 20px' }} disabled={busy || !email.trim()}>{t('admin.team.add')}</button>
+      </form>
+      {err && <div className="error">{err}</div>}
+      <div className="card mt16" style={{ padding: 0, overflow: 'hidden' }}>
+        {loading ? <Loading /> : (data || []).map((m) => (
+          <div key={m.email} className="row between" style={{ padding: '14px 16px', borderBottom: '1px solid var(--line)' }} data-testid="team-member">
+            <div>
+              <div style={{ fontWeight: 500 }}>{m.email}
+                {m.is_me && <span className="tiny muted"> ({t('admin.team.you')})</span>}
+                {m.is_founder && <span className="badge neutral" style={{ marginLeft: 8 }}>{t('admin.team.owner')}</span>}
+              </div>
+              <div className="tiny muted">{m.has_account ? t('admin.team.hasAccount') : t('admin.team.waiting')}</div>
+            </div>
+            {!m.is_me && !m.is_founder && (
+              <ConfirmButton className="btn btn-ghost btn-small" onConfirm={() => remove(m.email)} confirmText={t('admin.team.confirmRemove')}>{t('admin.team.remove')}</ConfirmButton>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

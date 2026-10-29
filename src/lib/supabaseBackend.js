@@ -182,6 +182,9 @@ export function makeSupabaseBackend(url, anonKey) {
     // ---------- GiGi admin (doctor approvals) ----------
     async isAdmin() { const { data } = await sb.rpc('is_admin'); return !!data; },
     async adminListDoctors() { return ok(await sb.rpc('admin_list_doctors')); },
+    async adminListTeam() { return ok(await sb.rpc('admin_list_team')); },
+    async adminAddAdmin(email) { ok(await sb.rpc('admin_add', { p_email: email })); fire(); },
+    async adminRemoveAdmin(email) { ok(await sb.rpc('admin_remove', { p_email: email })); fire(); },
     async adminSetDoctor(id, status) { ok(await sb.rpc('admin_set_doctor', { p_id: id, p_status: status })); fire(); },
 
     async joinWaitlist(entry) { ok(await sb.from('waitlist').insert(entry)); },

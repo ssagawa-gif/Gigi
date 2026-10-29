@@ -42,6 +42,11 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
       body: ['Gracias por unirte a GiGi como médico/a.', 'Estamos verificando tu perfil. Mientras tanto, completa tu perfil (especialidad, idiomas, tarifas) y abre tus primeras horas en la Agenda.'],
       cta: 'Completar mi perfil' }),
   },
+  admin_added: {
+    en: (d) => ({ subject: 'You joined the GiGi team', title: `Welcome to the team, ${d.name}!`, body: ['You were added as a GiGi administrator. You can now approve the doctors who sign up and manage the team.'], cta: 'Open the admin page' }),
+    pt: (d) => ({ subject: 'Você entrou na equipe GiGi', title: `Boas-vindas à equipe, ${d.name}!`, body: ['Você foi adicionada(o) como administradora do GiGi. Agora pode aprovar os médicos que se cadastram e gerenciar a equipe.'], cta: 'Abrir a página de admin' }),
+    es: (d) => ({ subject: 'Te uniste al equipo GiGi', title: `¡Bienvenida al equipo, ${d.name}!`, body: ['Te añadieron como administradora de GiGi. Ya puedes aprobar a los médicos que se registran y gestionar el equipo.'], cta: 'Abrir la página de administración' }),
+  },
   doctor_signup: {
     en: (d) => ({ subject: `New doctor waiting for approval: ${d.name}`, title: 'New doctor to approve', body: [`${d.name} signed up as a doctor on GiGi.`, 'Check their professional registration, then approve or decline them in the admin page.'], cta: 'Open doctor approvals' }),
     pt: (d) => ({ subject: `Novo médico aguardando aprovação: ${d.name}`, title: 'Novo médico para aprovar', body: [`${d.name} se cadastrou como médico(a) no GiGi.`, 'Confira o registro profissional e depois aprove ou recuse na página de admin.'], cta: 'Abrir aprovação de médicos' }),

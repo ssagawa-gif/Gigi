@@ -250,6 +250,21 @@ export const demoBackend = {
         review_status: d.review_status || (d.verified ? 'approved' : 'pending') };
     });
   },
+  async adminListTeam() {
+    const db = load(); const id = requireMe();
+    const myEmail = db.users.find((u) => u.id === id)?.email?.toLowerCase();
+    if (!db.team) { db.team = [{ email: 'team@gigihealth.app', founder: true }]; }
+    if (myEmail && !db.team.some((t) => t.email === myEmail)) { db.team.push({ email: myEmail }); save(db, false); }
+    return db.team.map((t) => ({ email: t.email, has_account: db.users.some((u) => u.email.toLowerCase() === t.email),
+      is_me: t.email === myEmail, is_founder: !!t.founder, added_at: null }));
+  },
+  async adminAddAdmin(email) {
+    const db = load(); const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('invalid email');
+    if (!db.team) db.team = [{ email: 'team@gigihealth.app', founder: true }];
+    if (!db.team.some((t) => t.email === e)) db.team.push({ email: e }); save(db);
+  },
+  async adminRemoveAdmin(email) { const db = load(); db.team = (db.team || []).filter((t) => t.email !== email || t.founder); save(db); },
   async adminSetDoctor(id, status) {
     const db = load(); const d = db.doctors.find((x) => x.id === id);
     d.review_status = status; d.verified = status === 'approved';

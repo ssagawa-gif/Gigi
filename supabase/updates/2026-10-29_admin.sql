@@ -11,6 +11,7 @@ alter table public.doctors add column if not exists review_status text not null 
   check (review_status in ('pending','approved','rejected'));
 update public.doctors set review_status = 'approved' where verified and review_status = 'pending';
 
+-- The founder's e-mail is stored only as a SHA-256 hash (other admins: updates/2026-10-29_admin_team.sql).
 -- Admin e-mails are stored only as SHA-256 hashes. Anyone who signs up (now or later)
 -- with one of these e-mails becomes a GiGi admin automatically.
 create table if not exists public.admin_email_hashes (hash text primary key);
