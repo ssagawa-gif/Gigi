@@ -26,7 +26,7 @@ function Guard({ role, children }) {
 function AdminGuard({ children }) {
   const { session } = useSession();
   if (session === undefined) return <Phone><Loading /></Phone>;
-  if (!session) return <Navigate to="/auth?mode=login" replace />;
+  if (!session) return <Navigate to="/auth?mode=login&next=/admin" replace />;
   return children;
 }
 

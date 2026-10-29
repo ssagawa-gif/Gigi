@@ -212,4 +212,5 @@ export default {
   'notif.admin_added': 'You were added to the GiGi team. You can now approve doctors.',
   'admin.signedInAs': 'You are signed in as {email}, which is not a GiGi team account.',
   'admin.switch': 'Sign out and use another account',
+  'welcome.forAdmins': 'For administrators',
 };

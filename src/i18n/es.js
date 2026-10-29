@@ -212,4 +212,5 @@ export default {
   'notif.admin_added': 'Te añadieron al equipo GiGi. Ya puedes aprobar médicos.',
   'admin.signedInAs': 'Has iniciado sesión como {email}, que no es una cuenta del equipo GiGi.',
   'admin.switch': 'Cerrar sesión y usar otra cuenta',
+  'welcome.forAdmins': 'Para administradores',
 };

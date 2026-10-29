@@ -43,7 +43,7 @@ export function Welcome() {
         </>
       )}
       <p className="tiny muted center mt8">
-        {IS_DEMO ? t('welcome.footDemo') : t('welcome.foot')} · <Link to="/doctor/login">{t('welcome.forDoctors')}</Link>
+        {IS_DEMO ? t('welcome.footDemo') : t('welcome.foot')} · <Link to="/doctor/login" style={{ whiteSpace: 'nowrap' }}>{t('welcome.forDoctors')}</Link> · <Link to="/auth?mode=login&next=/admin" style={{ whiteSpace: 'nowrap' }}>{t('welcome.forAdmins')}</Link>
       </p>
     </Phone>
   );
@@ -103,7 +103,9 @@ export function Auth({ role = 'patient' }) {
       } else {
         const s = await api.signIn(form);
         await refresh();
-        if (s?.profile?.role !== role) nav(s?.profile?.role === 'doctor' ? '/doctor' : '/home');
+        const next = params.get('next');
+        if (next && next.startsWith('/')) nav(next);   // e.g. the admin link on the welcome screen
+        else if (s?.profile?.role !== role) nav(s?.profile?.role === 'doctor' ? '/doctor' : '/home');
         else nav(home);
       }
     } catch (ex) {
