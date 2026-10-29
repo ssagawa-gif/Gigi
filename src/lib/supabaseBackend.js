@@ -179,6 +179,11 @@ export function makeSupabaseBackend(url, anonKey) {
       ok(await sb.rpc('delete_my_account'));
       await sb.auth.signOut();
     },
+    // ---------- GiGi admin (doctor approvals) ----------
+    async isAdmin() { const { data } = await sb.rpc('is_admin'); return !!data; },
+    async adminListDoctors() { return ok(await sb.rpc('admin_list_doctors')); },
+    async adminSetDoctor(id, status) { ok(await sb.rpc('admin_set_doctor', { p_id: id, p_status: status })); fire(); },
+
     async joinWaitlist(entry) { ok(await sb.from('waitlist').insert(entry)); },
   };
 }

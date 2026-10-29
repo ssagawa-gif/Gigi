@@ -65,6 +65,7 @@ function PatientDesktop({ children, wide }) {
   const { refresh } = useSession();
   const { data: notifs } = useData(() => api.listNotifications(), []);
   const unread = (notifs || []).filter((n) => !n.read_at).length;
+  const { data: isAdmin } = useData(() => (api.mode === 'demo' ? Promise.resolve(false) : api.isAdmin()), []);
   const links = [
     ['/home', 'home', t('nav.home')],
     ['/record', 'file', t('nav.record')],
@@ -82,6 +83,7 @@ function PatientDesktop({ children, wide }) {
           </NavLink>
         ))}
         <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}><Icon name="sparkle" size={18} />{t('plans.title')}</NavLink>
+        {isAdmin && <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}><Icon name="shield" size={18} />{t('admin.nav')}</NavLink>}
         <div className="spacer" />
         <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}><Icon name="settings" size={18} />{t('settings.title')}</NavLink>
         <a href="#/" onClick={async (e) => { e.preventDefault(); await api.signOut(); await refresh(); navTo('/'); }}><Icon name="logout" size={18} />{t('settings.logout')}</a>

@@ -124,6 +124,7 @@ export function Settings() {
   const { session, refresh, showToast } = useSession();
   const countryName = useCountryName();
   const p = session?.profile || {};
+  const { data: isAdmin } = useData(() => api.isAdmin(), []);
   const [form, setForm] = useState({ full_name: p.full_name || '', city: p.city || '', country: p.country || 'ES', history_note: p.history_note || '' });
 
   async function save() { await api.updateProfile(form); await refresh(); showToast(t('settings.saved')); }
@@ -156,6 +157,13 @@ export function Settings() {
         <ConfirmButton style={{ color: 'var(--danger)' }} onConfirm={del} confirmText={t('settings.deleteConfirm')}>{t('settings.delete')}</ConfirmButton>
         <button className="btn btn-ghost" onClick={async () => { await api.signOut(); await refresh(); nav('/'); }}>{t('settings.logout')}</button>
       </div>
+
+      {isAdmin && (
+        <>
+          <h3 className="mt24">{t('admin.title')}</h3>
+          <button className="btn btn-primary mt8" onClick={() => nav('/admin')}>{t('admin.open')}</button>
+        </>
+      )}
 
       <h3 className="mt24">{t('settings.clinician')}</h3>
       <p className="tiny muted">{t('settings.clinicianSub')}</p>

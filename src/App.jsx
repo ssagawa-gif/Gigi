@@ -11,6 +11,7 @@ import { FindDoctor, DoctorProfile, Booked } from './pages/patient/Doctors.jsx';
 import { Sharing, Plans, Settings, NotificationsList } from './pages/patient/More.jsx';
 import { Queue, Agenda, Patients, DoctorNotifications, DoctorProfileEdit } from './pages/doctor/Console.jsx';
 import { Phone, Loading } from './components/ui.jsx';
+import Admin from './pages/Admin.jsx';
 
 function Guard({ role, children }) {
   const { session } = useSession();
@@ -18,6 +19,14 @@ function Guard({ role, children }) {
   if (session === undefined) return <Phone><Loading /></Phone>;
   if (!session) return <Navigate to={role === 'doctor' ? '/doctor/login' : '/'} replace state={{ from: loc.pathname }} />;
   if (session.profile?.role !== role) return <Navigate to={session.profile?.role === 'doctor' ? '/doctor' : '/home'} replace />;
+  return children;
+}
+
+/** Any signed-in account can open /admin; the page itself checks the admin role in the database. */
+function AdminGuard({ children }) {
+  const { session } = useSession();
+  if (session === undefined) return <Phone><Loading /></Phone>;
+  if (!session) return <Navigate to="/auth?mode=login" replace />;
   return children;
 }
 
@@ -71,6 +80,7 @@ export default function App() {
             <Route path="/doctor/patients" element={D(<Patients />)} />
             <Route path="/doctor/notifications" element={D(<DoctorNotifications />)} />
             <Route path="/doctor/profile" element={D(<DoctorProfileEdit />)} />
+            <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>

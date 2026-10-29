@@ -19,6 +19,7 @@ export function DoctorShell({ children, title, actions }) {
   const { session, refresh } = useSession();
   const { data: queue } = useData(() => api.listDoctorQueue(), []);
   const { data: notifs } = useData(() => api.listNotifications(), []);
+  const { data: me } = useData(() => api.getDoctor(session?.user?.id), [session?.user?.id]);
   const open = (queue || []).filter((r) => r.status === 'open').length;
   const unread = (notifs || []).filter((n) => !n.read_at).length;
   const links = [
@@ -53,6 +54,9 @@ export function DoctorShell({ children, title, actions }) {
             <h1 style={{ fontSize: 34 }}>{title}</h1>
             <div className="row">{actions}<Bell to="/doctor/notifications" /></div>
           </div>
+          {me && !me.verified && (
+            <div className="card-tan small" style={{ marginBottom: 16 }}>{me.review_status === 'rejected' ? t('doc.rejected') : t('doc.pending')}</div>
+          )}
           {children}
         </main>
       </div>
@@ -355,7 +359,6 @@ export function DoctorProfileEdit() {
   return (
     <DoctorShell title={t('doc.nav.profile')}>
       <div className="card" style={{ maxWidth: 640 }}>
-        {!data.verified && <div className="card-tan small" style={{ marginBottom: 12 }}>{t('doc.pending')}</div>}
         <div className="grid2">
           <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{['gyn', 'endo', 'fertility', 'gp'].map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
           <div><label className="lbl">{t('doctor.consultation')}</label><select className="field" value={f.consultation || 'both'} onChange={set('consultation')}>{['both', 'in_person', 'video'].map((k) => <option key={k} value={k}>{t('consult.' + k)}</option>)}</select></div>

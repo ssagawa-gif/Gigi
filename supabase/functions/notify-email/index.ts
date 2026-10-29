@@ -42,6 +42,21 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
       body: ['Gracias por unirte a GiGi como médico/a.', 'Estamos verificando tu perfil. Mientras tanto, completa tu perfil (especialidad, idiomas, tarifas) y abre tus primeras horas en la Agenda.'],
       cta: 'Completar mi perfil' }),
   },
+  doctor_signup: {
+    en: (d) => ({ subject: `New doctor waiting for approval: ${d.name}`, title: 'New doctor to approve', body: [`${d.name} signed up as a doctor on GiGi.`, 'Check their professional registration, then approve or decline them in the admin page.'], cta: 'Open doctor approvals' }),
+    pt: (d) => ({ subject: `Novo médico aguardando aprovação: ${d.name}`, title: 'Novo médico para aprovar', body: [`${d.name} se cadastrou como médico(a) no GiGi.`, 'Confira o registro profissional e depois aprove ou recuse na página de admin.'], cta: 'Abrir aprovação de médicos' }),
+    es: (d) => ({ subject: `Nuevo médico pendiente de aprobación: ${d.name}`, title: 'Nuevo médico por aprobar', body: [`${d.name} se registró como médico/a en GiGi.`, 'Revisa su número de colegiado y luego apruébalo o recházalo en la página de administración.'], cta: 'Abrir aprobaciones' }),
+  },
+  doctor_approved: {
+    en: (d) => ({ subject: 'Your GiGi profile is approved', title: `You're in, ${d.name}!`, body: ['Your profile is approved. Patients can now find you on GiGi and book the free times in your agenda.', 'Open your agenda to add more times.'], cta: 'Open my agenda' }),
+    pt: (d) => ({ subject: 'Seu perfil no GiGi foi aprovado', title: `Tudo pronto, ${d.name}!`, body: ['Seu perfil foi aprovado. As pacientes já podem te encontrar no GiGi e reservar os horários livres da sua agenda.', 'Abra sua agenda para adicionar mais horários.'], cta: 'Abrir minha agenda' }),
+    es: (d) => ({ subject: 'Tu perfil en GiGi está aprobado', title: `¡Ya estás dentro, ${d.name}!`, body: ['Tu perfil está aprobado. Las pacientes ya pueden encontrarte en GiGi y reservar las horas libres de tu agenda.', 'Abre tu agenda para añadir más horas.'], cta: 'Abrir mi agenda' }),
+  },
+  doctor_rejected: {
+    en: (d) => ({ subject: 'About your GiGi profile', title: `Hello, ${d.name}`, body: ['Thank you for your interest in GiGi. We could not approve your profile at this time.', 'If you think this is a mistake, reply to the GiGi team and we will take another look.'], cta: 'Open GiGi' }),
+    pt: (d) => ({ subject: 'Sobre o seu perfil no GiGi', title: `Olá, ${d.name}`, body: ['Obrigada pelo interesse no GiGi. Não conseguimos aprovar o seu perfil neste momento.', 'Se achar que houve um engano, fale com a equipe GiGi e vamos olhar de novo.'], cta: 'Abrir o GiGi' }),
+    es: (d) => ({ subject: 'Sobre tu perfil en GiGi', title: `Hola, ${d.name}`, body: ['Gracias por tu interés en GiGi. No hemos podido aprobar tu perfil por ahora.', 'Si crees que es un error, escribe al equipo de GiGi y lo revisaremos de nuevo.'], cta: 'Abrir GiGi' }),
+  },
   review_requested: {
     en: (d) => ({ subject: `New review request from ${d.patient_name}`, title: 'New review request', body: [`${d.patient_name} asked you to review a ${d.marker} result on GiGi.`], cta: 'Open the review queue' }),
     pt: (d) => ({ subject: `Novo pedido de revisão de ${d.patient_name}`, title: 'Novo pedido de revisão', body: [`${d.patient_name} pediu sua revisão de um resultado de ${d.marker} no GiGi.`], cta: 'Abrir a fila de revisões' }),

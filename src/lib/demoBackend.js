@@ -79,7 +79,7 @@ export const demoBackend = {
     db.users.push({ id, email, password });
     db.profiles.push({ id, role: role || 'patient', full_name, language, reasons: [], consent_at: nowIso() });
     notify(db, id, role === 'doctor' ? 'welcome_doctor' : 'welcome', { name: full_name }, role === 'doctor' ? '/doctor/profile' : '/add');
-    if (role === 'doctor') db.doctors.push({ id, verified: true, specialty: 'gyn', area: '', languages: [], insurers: [], consultation: 'both', first_visit_fee: null, results_visit_fee: null, bio: '' });
+    if (role === 'doctor') db.doctors.push({ id, verified: false, review_status: 'pending', specialty: 'gyn', area: '', languages: [], insurers: [], consultation: 'both', first_visit_fee: null, results_visit_fee: null, bio: '' });
     save(db);
     sessionStorage.setItem(SESSION, id);
     return this.getSession();
@@ -239,5 +239,24 @@ export const demoBackend = {
     db.users = db.users.filter((u) => u.id !== id);
     save(db); sessionStorage.removeItem(SESSION);
   },
+  // ---------- GiGi admin (in sample mode everyone can try the approvals screen) ----------
+  async isAdmin() { return true; },
+  async adminListDoctors() {
+    const db = load();
+    return db.doctors.map((d) => {
+      const p = db.profiles.find((x) => x.id === d.id) || {};
+      const u = db.users.find((x) => x.id === d.id) || {};
+      return { ...d, full_name: p.full_name, email: u.email, created_at: p.consent_at || null,
+        review_status: d.review_status || (d.verified ? 'approved' : 'pending') };
+    });
+  },
+  async adminSetDoctor(id, status) {
+    const db = load(); const d = db.doctors.find((x) => x.id === id);
+    d.review_status = status; d.verified = status === 'approved';
+    const p = db.profiles.find((x) => x.id === id);
+    if (status !== 'pending') notify(db, id, 'doctor_' + status, { name: p?.full_name }, status === 'approved' ? '/doctor/agenda' : '/doctor/profile');
+    save(db);
+  },
+
   async joinWaitlist(entry) { const db = load(); db.waitlist.push({ ...entry, created_at: nowIso() }); save(db); },
 };
