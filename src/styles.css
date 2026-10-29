@@ -161,3 +161,19 @@ table.cmp td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical
   .main { padding: 18px 14px; }
   .split, .split.two { grid-template-columns: 1fr; }
 }
+
+/* ---------- Desktop (patient) ---------- */
+.desk-stage { min-height: 100%; background: var(--cream); display: flex; justify-content: center; align-items: flex-start; padding: 48px 20px; }
+.desk-card { width: 100%; max-width: 560px; background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 36px 40px; display: flex; flex-direction: column; min-height: 640px; box-shadow: 0 20px 60px rgba(86,24,33,.08); }
+.desk-card .card, .desk-card .option { background: var(--cream); }
+.desk-main { display: flex; justify-content: center; }
+.desk-inner { width: 100%; max-width: 720px; display: flex; flex-direction: column; position: relative; }
+.desk-inner.wide { max-width: 1080px; }
+.desk-inner h1 { font-size: 44px; }
+.desk-inner .fab { position: fixed; right: 40px; bottom: 40px; }
+@media (min-width: 900px) {
+  .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .stack.dgrid > * + * { margin-top: 0; }
+  .stack.dgrid { display: grid; }
+  .dgrid-3 { grid-template-columns: repeat(3, 1fr); }
+}

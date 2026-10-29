@@ -21,7 +21,7 @@ export function FindDoctor() {
     return true;
   });
   return (
-    <Phone nav>
+    <Phone nav wide>
       <h1>{t('find.title')}</h1>
       <div className="row field mt16" style={{ padding: '4px 12px' }}>
         <Icon name="search" size={16} />
@@ -36,7 +36,7 @@ export function FindDoctor() {
       {loading ? <Loading /> : (
         <>
           <p className="tiny muted mt16">{t('find.count', { n: list.length })}</p>
-          <div className="stack">
+          <div className="stack dgrid">
             {list.length ? list.map((d) => (
               <div key={d.id} className="card tap" onClick={() => nav(`/doctors/${d.id}`)}>
                 <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 20 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)}</div></div></div>

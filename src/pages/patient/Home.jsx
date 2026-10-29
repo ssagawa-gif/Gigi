@@ -35,7 +35,7 @@ export default function Home() {
   const openReviews = data?.reviews.filter((r) => r.status === 'open') || [];
 
   return (
-    <Phone nav>
+    <Phone nav wide>
       <div className="row between">
         <div>
           <h1>{t('home.hello', { name: p?.full_name || '' })}</h1>
@@ -53,6 +53,8 @@ export default function Home() {
             <button className="btn btn-light btn-small" onClick={() => nav(next.to)}>{next?.cta}</button>
           </div>
 
+          <div className="dgrid mt8">
+          <div>
           <div className="row between mt24"><h2>{t('home.comingUp')}</h2></div>
           <div className="stack mt8">
             {data.appts.map((a) => (
@@ -71,6 +73,8 @@ export default function Home() {
             ))}
             {!data.appts.length && !openReviews.length && <div className="card small muted">{t('home.nothingComing')}</div>}
           </div>
+          </div>
+          <div>
 
           {myDoctor?.full_name && (
             <>
@@ -83,10 +87,12 @@ export default function Home() {
             </>
           )}
 
-          <div className="card-tan list-item mt16 tap" onClick={() => nav('/plans')} style={{ cursor: 'pointer' }}>
+          <div className="card-tan list-item mt24 tap" onClick={() => nav('/plans')} style={{ cursor: 'pointer' }}>
             <Icon name="sparkle" size={18} />
             <div className="grow"><div style={{ fontWeight: 600, fontSize: 14 }}>{t('home.promo')}</div><div className="tiny muted">{t('home.seePlans')}</div></div>
             <Icon name="chevron" size={16} />
+          </div>
+          </div>
           </div>
         </>
       )}

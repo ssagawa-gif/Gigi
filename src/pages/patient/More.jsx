@@ -22,12 +22,12 @@ export function Sharing() {
     await api.createShare(form); setAdding(false); showToast(t('sharing.added'));
   }
   return (
-    <Phone nav>
+    <Phone nav wide>
       <div className="row between"><h1>{t('sharing.title')}</h1><MeAvatar name={session?.profile?.full_name} /></div>
       {loading ? <Loading /> : (
         <>
           <h3 className="mt24">{t('sharing.active')}</h3>
-          <div className="stack mt8">
+          <div className="stack dgrid mt8">
             {active.length ? active.map((s) => (
               <div key={s.id} className="card">
                 <div className="serif" style={{ fontSize: 20 }}>{s.doctor?.full_name}</div>

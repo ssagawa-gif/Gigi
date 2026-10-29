@@ -316,7 +316,7 @@ export function Patients() {
             </div>
             {tab === 'markers' && (
               <div className="split two mt16">
-                <MarkerList results={results || []} onOpen={setMarker} />
+                <MarkerList results={results || []} onOpen={setMarker} grid={false} />
                 {marker && groups[marker] && (() => { const l = groups[marker]; const last = l[l.length - 1]; return (
                   <div className="card"><h3>{markerName(marker, lang)}</h3>
                     <TrendChart points={l.map((r) => ({ date: r.test_date, value: r.value_canonical, country: r.country, lab: r.lab_name }))} band={[last.ref_low_canonical, last.ref_high_canonical]} unit={last.canonical_unit} /></div>

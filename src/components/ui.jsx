@@ -3,16 +3,71 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import { useI18n, LANGS } from '../i18n/index.jsx';
 import { api } from '../lib/api.js';
-import { useData } from '../lib/session.jsx';
+import { useData, useSession } from '../lib/session.jsx';
 import { markerName } from '../lib/markers.js';
 
-export function Phone({ children, nav = false }) {
+export function useIsDesktop() {
+  const q = '(min-width: 900px)';
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q); const on = () => setM(mq.matches);
+    mq.addEventListener('change', on); return () => mq.removeEventListener('change', on);
+  }, []);
+  return m;
+}
+
+/**
+ * Screen wrapper. Phone: the Lovable phone layout with bottom nav.
+ * Desktop (>= 900px): signed-in patients get a side menu; onboarding pages get a centred card.
+ * `wide` lets list pages use the full width with 2-column grids.
+ */
+export function Phone({ children, nav = false, wide = false }) {
+  const desktop = useIsDesktop();
+  const { session } = useSession();
+  if (desktop) {
+    if (session?.profile?.role === 'patient') return <PatientDesktop wide={wide}>{children}</PatientDesktop>;
+    return <div className="desk-stage"><div className="desk-card">{children}</div></div>;
+  }
   return (
     <div className="stage">
       <div className="phone">
         <div className={'screen' + (nav ? ' with-nav' : '')}>{children}</div>
         {nav && <BottomNav />}
       </div>
+    </div>
+  );
+}
+
+function PatientDesktop({ children, wide }) {
+  const { t } = useI18n();
+  const navTo = useNavigate();
+  const { refresh } = useSession();
+  const { data: notifs } = useData(() => api.listNotifications(), []);
+  const unread = (notifs || []).filter((n) => !n.read_at).length;
+  const links = [
+    ['/home', 'home', t('nav.home')],
+    ['/record', 'file', t('nav.record')],
+    ['/doctors', 'steth', t('nav.doctors')],
+    ['/sharing', 'share', t('nav.sharing')],
+    ['/notifications', 'bell', t('notif.title'), unread],
+  ];
+  return (
+    <div className="console">
+      <aside className="sidebar">
+        <span className="logo">GiGi<span className="dots"><i /><i /><i /></span></span>
+        {links.map(([to, icon, label, n]) => (
+          <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'active' : '')}>
+            <Icon name={icon} size={18} />{label}{n ? <span className="count">{n}</span> : null}
+          </NavLink>
+        ))}
+        <NavLink to="/plans" className={({ isActive }) => (isActive ? 'active' : '')}><Icon name="sparkle" size={18} />{t('plans.title')}</NavLink>
+        <div className="spacer" />
+        <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}><Icon name="settings" size={18} />{t('settings.title')}</NavLink>
+        <a href="#/" onClick={async (e) => { e.preventDefault(); await api.signOut(); await refresh(); navTo('/'); }}><Icon name="logout" size={18} />{t('settings.logout')}</a>
+      </aside>
+      <main className="main desk-main">
+        <div className={'desk-inner' + (wide ? ' wide' : '')}>{children}</div>
+      </main>
     </div>
   );
 }

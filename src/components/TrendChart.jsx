@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useI18n } from '../i18n/index.jsx';
 
 /**
@@ -9,9 +9,17 @@ import { useI18n } from '../i18n/index.jsx';
 export default function TrendChart({ points, band, unit, height = 170 }) {
   const { t, fmtMonth, fmtDate, fmtNum } = useI18n();
   const [hover, setHover] = useState(null);
+  const box = useRef(null);
+  const [W, setW] = useState(340);
+  // draw at the real pixel width so text stays small on wide (desktop) screens
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const ro = new ResizeObserver(() => setW(Math.max(280, Math.round(el.clientWidth))));
+    ro.observe(el); return () => ro.disconnect();
+  }, []);
   if (!points?.length) return null;
 
-  const W = 340, H = height, L = 30, R = 10, T = 10, B = 26;
+  const H = W > 500 ? 220 : height, L = 30, R = 10, T = 10, B = 26;
   const xs = points.map((p) => new Date(p.date).getTime());
   const vals = points.map((p) => p.value);
   const [lo, hi] = band || [null, null];
@@ -32,14 +40,14 @@ export default function TrendChart({ points, band, unit, height = 170 }) {
   }
 
   return (
-    <div>
+    <div ref={box}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t('chart.aria')}>
         {(lo != null || hi != null) && (() => {
           const top = Y(Math.min(hi ?? max, max)), bottom = Y(Math.max(lo ?? min, min));
           return bottom > top ? <rect x={L} y={top} width={W - L - R} height={bottom - top} fill="var(--band)" rx="4" /> : null;
         })()}
         {ticks.map((v, i) => (
-          <text key={i} x={L - 6} y={Y(v) + 3} fontSize="9" textAnchor="end" fill="var(--muted)">{fmtNum(Math.round(v))}</text>
+          <text key={i} x={L - 6} y={Y(v) + 3} fontSize={W > 500 ? 11.5 : 9} textAnchor="end" fill="var(--muted)">{fmtNum(Math.round(v))}</text>
         ))}
         <path d={path} fill="none" stroke="var(--cherry)" strokeWidth="2" />
         {points.map((p, i) => {
@@ -52,7 +60,7 @@ export default function TrendChart({ points, band, unit, height = 170 }) {
           );
         })}
         {labelIdx.map((i) => (
-          <text key={'x' + i} x={X(xs[i])} y={H - 8} fontSize="9" textAnchor={i === points.length - 1 && points.length > 1 ? 'end' : i === 0 ? 'start' : 'middle'} fill="var(--muted)">{fmtMonth(points[i].date)}</text>
+          <text key={'x' + i} x={X(xs[i])} y={H - 8} fontSize={W > 500 ? 11.5 : 9} textAnchor={i === points.length - 1 && points.length > 1 ? 'end' : i === 0 ? 'start' : 'middle'} fill="var(--muted)">{fmtMonth(points[i].date)}</text>
         ))}
       </svg>
       <div className="row small muted" style={{ gap: 14, minHeight: 20 }}>

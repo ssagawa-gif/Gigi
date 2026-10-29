@@ -9,10 +9,10 @@ import { useSession, useData } from '../../lib/session.jsx';
 import { latestPerMarker } from '../../lib/results.js';
 import { markerName } from '../../lib/markers.js';
 
-export function MarkerList({ results, onOpen }) {
+export function MarkerList({ results, onOpen, grid = true }) {
   const { lang, fmtDate, fmtNum } = useI18n();
   return (
-    <div className="stack">
+    <div className={'stack' + (grid ? ' dgrid' : '')}>
       {latestPerMarker(results).map((r) => (
         <div key={r.id} className="card row between tap" onClick={() => onOpen(r.marker_code)}>
           <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)}</div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div></div>
@@ -42,7 +42,7 @@ export default function Record() {
   }
 
   return (
-    <Phone nav>
+    <Phone nav wide>
       <div className="row between"><h1>{t('record.title')}</h1><MeAvatar name={p?.full_name} /></div>
       <div className="chips mt16">
         {['bloodwork', 'compare', 'reports'].map((k) => (
