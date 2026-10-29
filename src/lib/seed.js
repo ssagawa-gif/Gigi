@@ -33,12 +33,12 @@ export function seed() {
     ],
     doctors: [
       { id: MARTA, verified: true, specialty: 'gyn', area: 'Sant Gervasi, Barcelona', languages: ['Spanish', 'Catalan', 'English'],
-        consultation: 'both', insurers: ['Sanitas', 'Adeslas', 'DKV', 'Asisa', 'Mapfre'], first_visit_fee: 150, results_visit_fee: 50,
+        consultation: 'video', insurers: ['Sanitas', 'Adeslas', 'DKV', 'Asisa', 'Mapfre'], first_visit_fee: 150, results_visit_fee: 50,
         bio: '15 years in fertility planning and preventive gynaecology. Reviews GiGi results within 48 hours.' },
       { id: MARC, verified: true, specialty: 'endo', area: 'Eixample, Barcelona', languages: ['Catalan', 'Spanish'],
-        consultation: 'in_person', insurers: ['Sanitas', 'DKV'], first_visit_fee: 130, results_visit_fee: null, bio: '' },
+        consultation: 'video', insurers: ['Sanitas', 'DKV'], first_visit_fee: 130, results_visit_fee: null, bio: '' },
       { id: LAIA, verified: true, specialty: 'fertility', area: 'Gràcia, Barcelona', languages: ['Spanish', 'Catalan', 'English', 'French'],
-        consultation: 'in_person', insurers: ['Adeslas', 'Asisa'], first_visit_fee: 170, results_visit_fee: null, bio: '' },
+        consultation: 'video', insurers: ['Adeslas', 'Asisa'], first_visit_fee: 170, results_visit_fee: null, bio: '' },
     ],
     reports: [],
     results: [

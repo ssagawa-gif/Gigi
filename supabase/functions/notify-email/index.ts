@@ -12,7 +12,7 @@ const MARKERS: Record<string, Record<string, string>> = {
   tsh: { en: 'TSH', pt: 'TSH', es: 'TSH' },
 };
 
-type Mail = { subject: string; title: string; body: string[]; cta: string };
+type Mail = { subject: string; title: string; body: string[]; cta: string; extra?: string };
 const T: Record<string, Record<string, (d: any) => Mail>> = {
   welcome: {
     en: (d) => ({ subject: `Welcome to GiGi, ${d.name}`, title: `Welcome to GiGi, ${d.name}!`,
@@ -68,9 +68,14 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
     es: (d) => ({ subject: `Nueva solicitud de revisión de ${d.patient_name}`, title: 'Nueva solicitud de revisión', body: [`${d.patient_name} te pidió revisar un resultado de ${d.marker} en GiGi.`], cta: 'Abrir revisiones' }),
   },
   appointment_booked: {
-    en: (d) => ({ subject: `New appointment: ${d.patient_name}, ${d.when}`, title: 'New appointment', body: [`${d.patient_name} booked a visit with you for ${d.when}.`], cta: 'Open my agenda' }),
-    pt: (d) => ({ subject: `Nova consulta: ${d.patient_name}, ${d.when}`, title: 'Nova consulta', body: [`${d.patient_name} marcou uma consulta com você para ${d.when}.`], cta: 'Abrir minha agenda' }),
-    es: (d) => ({ subject: `Nueva cita: ${d.patient_name}, ${d.when}`, title: 'Nueva cita', body: [`${d.patient_name} reservó una cita contigo para el ${d.when}.`], cta: 'Abrir mi agenda' }),
+    en: (d) => ({ subject: `New online visit: ${d.patient_name}, ${d.when}`, title: 'New online visit', body: [`${d.patient_name} booked an online visit with you for ${d.when}.`], cta: 'Open my agenda' }),
+    pt: (d) => ({ subject: `Nova consulta online: ${d.patient_name}, ${d.when}`, title: 'Nova consulta online', body: [`${d.patient_name} marcou uma consulta online com você para ${d.when}.`], cta: 'Abrir minha agenda' }),
+    es: (d) => ({ subject: `Nueva cita online: ${d.patient_name}, ${d.when}`, title: 'Nueva cita online', body: [`${d.patient_name} reservó una cita online contigo para el ${d.when}.`], cta: 'Abrir mi agenda' }),
+  },
+  appointment_confirmed: {
+    en: (d) => ({ subject: `Your online visit with ${d.doctor_name} is confirmed`, title: 'Your visit is confirmed', body: [`Online visit with ${d.doctor_name} on ${d.when}.`, 'At the time of the visit, use the button below to join the video call from your phone or computer.'], cta: 'See my visit in GiGi' }),
+    pt: (d) => ({ subject: `Sua consulta online com ${d.doctor_name} está confirmada`, title: 'Consulta confirmada', body: [`Consulta online com ${d.doctor_name} em ${d.when}.`, 'Na hora da consulta, use o botão abaixo para entrar na videochamada pelo celular ou computador.'], cta: 'Ver minha consulta no GiGi' }),
+    es: (d) => ({ subject: `Tu cita online con ${d.doctor_name} está confirmada`, title: 'Cita confirmada', body: [`Cita online con ${d.doctor_name} el ${d.when}.`, 'A la hora de la cita, usa el botón de abajo para entrar en la videollamada desde el móvil o el ordenador.'], cta: 'Ver mi cita en GiGi' }),
   },
   appointment_cancelled: {
     en: (d) => ({ subject: `Appointment cancelled: ${d.when}`, title: 'Appointment cancelled', body: [`${d.name} cancelled the appointment on ${d.when}.`], cta: 'Open GiGi' }),
@@ -86,6 +91,44 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
 
 const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
+
+const L: Record<string, Record<string, string>> = {
+  join: { en: 'Join the video call', pt: 'Entrar na videochamada', es: 'Entrar en la videollamada' },
+  addCal: { en: 'Add to your calendar', pt: 'Adicionar à sua agenda', es: 'Añadir a tu calendario' },
+  ics: { en: 'Apple Calendar and others: open the attached file (gigi-visit.ics).', pt: 'Apple Calendar e outros: abra o arquivo anexo (gigi-consulta.ics).', es: 'Apple Calendar y otros: abre el archivo adjunto (gigi-cita.ics).' },
+  title: { en: 'GiGi · Online visit with', pt: 'GiGi · Consulta online com', es: 'GiGi · Cita online con' },
+  link: { en: 'Video call link', pt: 'Link da videochamada', es: 'Enlace de la videollamada' },
+};
+const icsName: Record<string, string> = { en: 'gigi-visit.ics', pt: 'gigi-consulta.ics', es: 'gigi-cita.ics' };
+const utc = (dt: Date) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+function visitBlock(d: any, lang: string, who: string) {
+  if (!d.starts_at || !d.meeting_url) return { html: '', ics: null as string | null };
+  const start = new Date(d.starts_at), end = new Date(start.getTime() + (Number(d.minutes) || 30) * 60000);
+  const title = `${L.title[lang]} ${who}`;
+  const details = `${L.link[lang]}: ${d.meeting_url}`;
+  const g = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + `&text=${encodeURIComponent(title)}&dates=${utc(start)}/${utc(end)}`
+    + `&details=${encodeURIComponent(details)}&location=${encodeURIComponent(d.meeting_url)}`;
+  const o = 'https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent'
+    + `&subject=${encodeURIComponent(title)}&startdt=${encodeURIComponent(start.toISOString())}&enddt=${encodeURIComponent(end.toISOString())}`
+    + `&body=${encodeURIComponent(details)}&location=${encodeURIComponent(d.meeting_url)}`;
+  const btn = 'display:inline-block;margin:6px 6px 0 0;border:1px solid #E6DAD0;background:#fff;color:#561821;padding:9px 14px;border-radius:999px;text-decoration:none;font-weight:600;font-size:13px';
+  const html = `
+    <a href="${esc(d.meeting_url)}" style="display:inline-block;margin:8px 0 4px;background:#E2683C;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">${L.join[lang]}</a>
+    <p style="font-size:12px;color:#7D6E6B;margin:4px 0 16px;word-break:break-all">${esc(d.meeting_url)}</p>
+    <p style="font-size:14px;font-weight:600;margin:12px 0 2px">${L.addCal[lang]}</p>
+    <a href="${g}" style="${btn}">Google Calendar</a><a href="${o}" style="${btn}">Outlook</a>
+    <p style="font-size:12px;color:#7D6E6B;margin:8px 0 0">${L.ics[lang]}</p>`;
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GiGi//EN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+    `UID:${d.appointment_id || crypto.randomUUID()}@gigihealth.app`, `DTSTAMP:${utc(new Date())}`,
+    `DTSTART:${utc(start)}`, `DTEND:${utc(end)}`, `SUMMARY:${title}`, `DESCRIPTION:${details}`,
+    `LOCATION:${d.meeting_url}`, `URL:${d.meeting_url}`,
+    'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', `DESCRIPTION:${title}`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  return { html, ics };
+}
+
 // Same brand as the app. The logo is an image (public/email-logo.png, published with the site)
 // because Gmail strips the CSS that places the three dots above the last "i".
 function html(m: Mail, link: string, appUrl: string) {
@@ -95,6 +138,7 @@ function html(m: Mail, link: string, appUrl: string) {
       <img src="${appUrl}email-logo.png" width="120" height="72" alt="GiGi" style="display:block;border:0;outline:none;width:120px;height:auto">
       <h1 style="font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:28px;margin:24px 0 12px">${esc(m.title)}</h1>
       ${m.body.map((p) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${esc(p)}</p>`).join('')}
+      ${m.extra || ''}
       <a href="${link}" style="display:inline-block;margin-top:12px;background:#561821;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">${esc(m.cta)}</a>
     </div>
   </div>`;
@@ -118,9 +162,15 @@ Deno.serve(async (req) => {
   if (!u?.user?.email || !tpl) return new Response('skip');
 
   const d = record.data || {};
-  const when = d.starts_at ? new Date(d.starts_at).toLocaleString(lang === 'en' ? 'en-GB' : lang, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Madrid' }) : '';
+  const when = d.starts_at ? new Date(d.starts_at).toLocaleString(lang === 'en' ? 'en-GB' : lang === 'pt' ? 'pt-BR' : 'es-ES',
+    { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid', timeZoneName: 'short' }) : '';
   const mail = tpl({ ...d, name: d.name || p?.full_name || '', when, marker: MARKERS[d.marker_code]?.[lang] || d.marker_code || '' });
   const link = `${Deno.env.get('APP_URL') || ''}#${record.link || ''}`;
+
+  // Visit e-mails: video link + add-to-calendar buttons + .ics attachment
+  const isVisit = record.type === 'appointment_confirmed' || record.type === 'appointment_booked';
+  const visit = isVisit ? visitBlock(d, lang, record.type === 'appointment_confirmed' ? d.doctor_name : d.patient_name) : { html: '', ics: null };
+  mail.extra = visit.html;
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -130,6 +180,7 @@ Deno.serve(async (req) => {
       to: u.user.email,
       subject: mail.subject,
       html: html(mail, link, Deno.env.get('APP_URL') || ''),
+      ...(visit.ics ? { attachments: [{ filename: icsName[lang] || icsName.en, content: btoa(unescape(encodeURIComponent(visit.ics))), content_type: 'text/calendar' }] } : {}),
     }),
   });
   return new Response(await res.text(), { status: res.status });

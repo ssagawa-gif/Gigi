@@ -183,10 +183,14 @@ export const demoBackend = {
     const s = db.slots.find((x) => x.id === slotId);
     if (!s || s.booked) throw new Error('book.taken');
     s.booked = true;
-    const appt = { id: 'ap-' + uid(), slot_id: s.id, doctor_id: s.doctor_id, patient_id: id, starts_at: s.starts_at, minutes: s.minutes, type, note, status: 'booked', created_at: nowIso() };
+    const doc = db.doctors.find((d) => d.id === s.doctor_id);
+    const meeting_url = (doc?.meeting_url || '').trim() || 'https://meet.jit.si/GiGi-' + uid() + uid();
+    const appt = { id: 'ap-' + uid(), slot_id: s.id, doctor_id: s.doctor_id, patient_id: id, starts_at: s.starts_at, minutes: s.minutes, type, note, meeting_url, status: 'booked', created_at: nowIso() };
     db.appointments.push(appt);
     const me = db.profiles.find((p) => p.id === id);
-    notify(db, s.doctor_id, 'appointment_booked', { patient_name: me?.full_name, starts_at: s.starts_at, type }, '/doctor/agenda');
+    const docName = db.profiles.find((p) => p.id === s.doctor_id)?.full_name;
+    notify(db, s.doctor_id, 'appointment_booked', { patient_name: me?.full_name, doctor_name: docName, starts_at: s.starts_at, type, meeting_url }, '/doctor/agenda');
+    notify(db, id, 'appointment_confirmed', { doctor_name: docName, patient_name: me?.full_name, starts_at: s.starts_at, type, meeting_url }, '/booked/' + appt.id);
     save(db); return appt;
   },
   async listAppointments() {

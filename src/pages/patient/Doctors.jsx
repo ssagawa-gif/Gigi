@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
+import { visitEvent, googleCalendarUrl, outlookCalendarUrl, downloadIcs } from '../../lib/calendar.js';
 
 export function FindDoctor() {
   const { t, fmtMoney } = useI18n();
@@ -42,6 +43,7 @@ export function FindDoctor() {
                 <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 20 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)}</div></div></div>
                 <div className="divider" />
                 <div className="stack small muted" style={{ fontSize: 12.5 }}>
+                  <div className="row" style={{ gap: 8 }}><Icon name="video" size={14} />{t('consult.video')}</div>
                   {d.area && <div className="row" style={{ gap: 8 }}><Icon name="pin" size={14} />{d.area}</div>}
                   {!!d.languages?.length && <div className="row" style={{ gap: 8 }}><Icon name="lang" size={14} />{d.languages.join(', ')}</div>}
                   {d.first_visit_fee != null && <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtMoney(d.first_visit_fee)}</div>}
@@ -88,7 +90,7 @@ export function DoctorProfile() {
       <div className="tiny muted center">{t('spec.' + d.specialty)}{d.area ? ' · ' + d.area : ''}</div>
       <div className="card stack mt16">
         {!!d.languages?.length && <Info icon="lang" label={t('doctor.languages')} value={d.languages.join(', ')} />}
-        <Info icon="video" label={t('doctor.consultation')} value={t('consult.' + (d.consultation || 'both'))} />
+        <Info icon="video" label={t('doctor.consultation')} value={t('consult.video')} />
         {!!d.insurers?.length && <Info icon="shield" label={t('doctor.insurers')} value={d.insurers.join(', ')} />}
       </div>
       {d.bio && <p className="small muted mt16">{d.bio}</p>}
@@ -109,7 +111,7 @@ export function DoctorProfile() {
         <>
           <label className="lbl">{t('book.type')}</label>
           <div className="chips">
-            {['first', 'results', 'video'].map((k) => <button key={k} className={'chip' + (type === k ? ' on' : '')} onClick={() => setType(k)}>{t('visit.' + k)}</button>)}
+            {['first', 'results'].map((k) => <button key={k} className={'chip' + (type === k ? ' on' : '')} onClick={() => setType(k)}>{t('visit.' + k)}</button>)}
           </div>
           <label className="lbl">{t('book.note')}</label>
           <textarea className="field" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -138,6 +140,7 @@ export function Booked() {
   const { data, loading } = useData(() => api.listAppointments(), []);
   if (loading) return <Phone><Loading /></Phone>;
   const a = data.find((x) => x.id === id);
+  const ev = a?.meeting_url ? visitEvent(a, `${t('booked.calTitle')} ${a.doctor?.full_name || ''}`) : null;
   return (
     <Phone>
       <TopBar close onBack={() => nav('/home')} />
@@ -146,7 +149,20 @@ export function Booked() {
         <>
           <h1 className="center mt16" style={{ fontSize: 30 }}>{t('booked.title', { doctor: a.doctor?.full_name })}</h1>
           <p className="center">{fmtSlot(a.starts_at)} · {t('visit.' + a.type)}</p>
-          <p className="small muted center">{a.doctor?.area}</p>
+          <p className="small muted center" style={{ marginTop: -6 }}><Icon name="video" size={14} style={{ verticalAlign: '-2px' }} /> {t('booked.online')}</p>
+          {ev && (
+            <div className="card mt16">
+              <a className="btn btn-primary" href={a.meeting_url} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', background: 'var(--persimmon)' }}>{t('booked.join')}</a>
+              <p className="tiny muted center" style={{ wordBreak: 'break-all' }}>{a.meeting_url}</p>
+              <div className="small" style={{ fontWeight: 600, marginTop: 12 }}>{t('booked.addCal')}</div>
+              <div className="chips mt8">
+                <a className="chip" href={googleCalendarUrl(ev)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>Google Calendar</a>
+                <a className="chip" href={outlookCalendarUrl(ev)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>Outlook</a>
+                <button className="chip" onClick={() => downloadIcs(ev, t('booked.icsFile'))}>{t('booked.appleOther')}</button>
+              </div>
+              <p className="tiny muted" style={{ marginBottom: 0 }}>{t('booked.emailSent')}</p>
+            </div>
+          )}
           <div className="spacer" />
           <button className="btn btn-primary mt24" onClick={() => nav('/plans')}>{t('booked.next')}</button>
           <button className="btn btn-ghost mt8" onClick={() => nav('/home')}>{t('nav.home')}</button>

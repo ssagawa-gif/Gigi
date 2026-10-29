@@ -253,6 +253,7 @@ export function Agenda() {
           {sel.a ? (
             <>
               <p className="small">{sel.a.patient?.full_name} · {t('visit.' + sel.a.type)}{sel.a.note ? ` — “${sel.a.note}”` : ''}</p>
+              {sel.a.meeting_url && <p className="small"><a href={sel.a.meeting_url} target="_blank" rel="noreferrer">{t('booked.join')}</a> <span className="tiny muted" style={{ wordBreak: 'break-all' }}>{sel.a.meeting_url}</span></p>}
               <button className="btn btn-ghost btn-small" onClick={async () => { await api.cancelAppointment(sel.a.id); setSel(null); showToast(t('booked.cancelled')); }}>{t('booked.cancel')}</button>
             </>
           ) : (
@@ -351,7 +352,9 @@ export function DoctorProfileEdit() {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   async function save() {
     const split = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
-    await api.updateDoctor({ specialty: f.specialty, area: f.area, consultation: f.consultation, bio: f.bio,
+    const link = (f.meeting_url || '').trim();
+    if (link && !/^https:\/\/\S+$/.test(link)) { showToast(t('doc.meetingInvalid')); return; }
+    await api.updateDoctor({ specialty: f.specialty, area: f.area, consultation: 'video', meeting_url: link || null, bio: f.bio,
       languages: split(f.languages), insurers: split(f.insurers),
       first_visit_fee: f.first_visit_fee === '' ? null : Number(f.first_visit_fee), results_visit_fee: f.results_visit_fee === '' || f.results_visit_fee == null ? null : Number(f.results_visit_fee) });
     showToast(t('settings.saved'));
@@ -361,8 +364,11 @@ export function DoctorProfileEdit() {
       <div className="card" style={{ maxWidth: 640 }}>
         <div className="grid2">
           <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{['gyn', 'endo', 'fertility', 'gp'].map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
-          <div><label className="lbl">{t('doctor.consultation')}</label><select className="field" value={f.consultation || 'both'} onChange={set('consultation')}>{['both', 'in_person', 'video'].map((k) => <option key={k} value={k}>{t('consult.' + k)}</option>)}</select></div>
+          <div><label className="lbl">{t('doctor.consultation')}</label><div className="field" style={{ background: 'transparent', border: '1px solid var(--line)' }}>{t('consult.video')}</div></div>
         </div>
+        <label className="lbl">{t('doc.meetingUrl')}</label>
+        <input className="field" type="url" value={f.meeting_url || ''} onChange={set('meeting_url')} placeholder="https://meet.google.com/abc-defg-hij" />
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('doc.meetingHint')}</p>
         <label className="lbl">{t('doc.area')}</label><input className="field" value={f.area || ''} onChange={set('area')} />
         <label className="lbl">{t('doctor.languages')}</label><input className="field" value={f.languages} onChange={set('languages')} placeholder="Spanish, Catalan, English" />
         <label className="lbl">{t('doctor.insurers')}</label><input className="field" value={f.insurers} onChange={set('insurers')} />
