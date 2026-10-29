@@ -7,7 +7,7 @@ export default {
   'welcome.headline': 'Tu historial de salud femenina, en un solo lugar.',
   'welcome.sub': 'Tus resultados, un médico de confianza y próximos pasos claros — revisados por médicos reales.',
   'welcome.p1': 'Mi historial.', 'welcome.p2': 'Mi médico.', 'welcome.p3': 'Mi decisión.',
-  'welcome.deskTitle': 'Te damos la bienvenida a GiGi', 'welcome.start': 'Empezar', 'welcome.continue': 'Continuar', 'welcome.haveAccount': 'Ya tengo una cuenta',
+  'welcome.deskTitle': 'Bienvenida, ven a formar parte del grupo de GiGi', 'welcome.start': 'Empezar', 'welcome.continue': 'Continuar', 'welcome.haveAccount': 'Ya tengo una cuenta',
   'welcome.foot': 'Tus datos se guardan en la UE', 'welcome.footDemo': 'Prototipo · solo datos de ejemplo · no se envía nada',
   'welcome.forDoctors': 'Para médicos',
 

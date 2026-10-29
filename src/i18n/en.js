@@ -7,7 +7,7 @@ export default {
   'welcome.headline': "Your women's health history, in one place.",
   'welcome.sub': 'Your results, a doctor you trust, and clear next steps — reviewed by real clinicians.',
   'welcome.p1': 'My history.', 'welcome.p2': 'My doctor.', 'welcome.p3': 'My choice.',
-  'welcome.deskTitle': 'Welcome to GiGi', 'welcome.start': 'Get started', 'welcome.continue': 'Continue', 'welcome.haveAccount': 'I already have an account',
+  'welcome.deskTitle': 'Welcome, and come be part of the GiGi group', 'welcome.start': 'Get started', 'welcome.continue': 'Continue', 'welcome.haveAccount': 'I already have an account',
   'welcome.foot': 'Your data is stored in the EU', 'welcome.footDemo': 'A prototype · sample data only · nothing is sent anywhere',
   'welcome.forDoctors': 'For doctors',
 
