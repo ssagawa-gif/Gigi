@@ -2,7 +2,25 @@
 import { createClient } from '@supabase/supabase-js';
 
 export function makeSupabaseBackend(url, anonKey) {
-  const sb = createClient(url, anonKey);
+  // detectSessionInUrl is off: links from e-mails (password reset) are handled by `ready` below,
+  // before the router starts, because the app itself uses the URL hash for its pages.
+  const sb = createClient(url, anonKey, { auth: { detectSessionInUrl: false } });
+
+  // Password-reset links come back as https://gigihealth.app/#access_token=...&type=recovery
+  // (or #error=... when the link expired). Turn that into a session + the right page.
+  const ready = (async () => {
+    const h = window.location.hash || '';
+    if (!/access_token=|error_description=/.test(h)) return;
+    const q = new URLSearchParams(h.replace(/^#\/?/, ''));
+    let target = '#/';
+    if (q.get('access_token') && q.get('refresh_token')) {
+      const { error } = await sb.auth.setSession({ access_token: q.get('access_token'), refresh_token: q.get('refresh_token') });
+      target = error ? '#/forgot?expired=1' : q.get('type') === 'recovery' ? '#/reset' : '#/home';
+    } else if (q.get('error_description')) {
+      target = '#/forgot?expired=1';
+    }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search + target);
+  })().catch(() => {});
   const listeners = new Set();
   const fire = () => listeners.forEach((fn) => fn());
   let channel = null;
@@ -35,6 +53,7 @@ export function makeSupabaseBackend(url, anonKey) {
 
   return {
     mode: 'supabase',
+    ready,
 
     async getSession() {
       const { data } = await sb.auth.getSession();
@@ -55,6 +74,15 @@ export function makeSupabaseBackend(url, anonKey) {
       return this.getSession();
     },
     async signOut() { await sb.auth.signOut(); },
+    async requestPasswordReset(email) {
+      const redirectTo = window.location.origin + window.location.pathname;   // the app's home; `ready` takes it from there
+      const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      if (error && !/rate limit/i.test(error.message)) throw new Error(error.message);
+    },
+    async updatePassword(password) {
+      const { error } = await sb.auth.updateUser({ password });
+      if (error) throw new Error(error.message);
+    },
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
     async updateProfile(patch) { const id = await uidOf(); const row = ok(await sb.from('profiles').update(patch).eq('id', id).select().single()); fire(); return row; },

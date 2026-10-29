@@ -1,0 +1,21 @@
+<div style="background:#F5EEE8;padding:32px 16px;font-family:'DM Sans',Arial,sans-serif;color:#2A1A1C">
+  <div style="max-width:520px;margin:0 auto;background:#FBF9F5;border:1px solid #E6DAD0;border-radius:20px;padding:32px">
+    <img src="https://gigihealth.app/email-logo.png" width="120" alt="GiGi" style="display:block;border:0;width:120px;height:auto">
+    {{ if eq .Data.language "pt" }}
+    <h1 style="font-family:Georgia,serif;font-weight:400;font-size:28px;margin:24px 0 12px">Crie uma nova senha</h1>
+    <p style="font-size:15px;line-height:1.5">Recebemos um pedido para trocar a senha da sua conta no GiGi. Clique no botão abaixo para criar uma nova senha.</p>
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;margin-top:12px;background:#561821;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">Criar nova senha</a>
+    <p style="font-size:13px;color:#7D6E6B;margin-top:20px">O link vale por 1 hora. Se não foi você que pediu, pode ignorar este e-mail: sua senha continua a mesma.</p>
+    {{ else if eq .Data.language "es" }}
+    <h1 style="font-family:Georgia,serif;font-weight:400;font-size:28px;margin:24px 0 12px">Crea una nueva contraseña</h1>
+    <p style="font-size:15px;line-height:1.5">Recibimos una solicitud para cambiar la contraseña de tu cuenta en GiGi. Pulsa el botón para crear una nueva contraseña.</p>
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;margin-top:12px;background:#561821;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">Crear nueva contraseña</a>
+    <p style="font-size:13px;color:#7D6E6B;margin-top:20px">El enlace es válido durante 1 hora. Si no lo pediste tú, ignora este correo: tu contraseña sigue igual.</p>
+    {{ else }}
+    <h1 style="font-family:Georgia,serif;font-weight:400;font-size:28px;margin:24px 0 12px">Create a new password</h1>
+    <p style="font-size:15px;line-height:1.5">We received a request to change the password of your GiGi account. Click the button below to create a new password.</p>
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;margin-top:12px;background:#561821;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">Create new password</a>
+    <p style="font-size:13px;color:#7D6E6B;margin-top:20px">The link is valid for 1 hour. If you didn't ask for this, you can ignore this e-mail: your password stays the same.</p>
+    {{ end }}
+  </div>
+</div>

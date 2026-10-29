@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Phone, TopBar, LangPicker } from '../../components/ui.jsx';
+import { Phone, TopBar, LangPicker, PasswordField } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api, IS_DEMO } from '../../lib/api.js';
@@ -125,7 +125,13 @@ export function Auth({ role = 'patient' }) {
         <label className="lbl">{t('auth.email')}</label>
         <input className="field" type="email" required value={form.email} onChange={set('email')} autoComplete="email" />
         <label className="lbl">{t('auth.password')}</label>
-        <input className="field" type="password" required minLength={IS_DEMO ? 1 : 8} value={form.password} onChange={set('password')} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+        <PasswordField value={form.password} onChange={set('password')} minLength={IS_DEMO ? 1 : 8} ariaLabel={t('auth.password')}
+          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+        {mode === 'login' && (
+          <div style={{ textAlign: 'right', marginTop: 6 }}>
+            <Link to={`/forgot${form.email ? '?email=' + encodeURIComponent(form.email) : ''}`} className="small" style={{ fontWeight: 600 }}>{t('auth.forgot')}</Link>
+          </div>
+        )}
         {err && <div className="error">{err}</div>}
         <button className="btn btn-primary mt24" disabled={busy}>{mode === 'signup' ? t('auth.create') : t('auth.login')}</button>
       </form>

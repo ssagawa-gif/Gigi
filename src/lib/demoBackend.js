@@ -84,6 +84,11 @@ export const demoBackend = {
     sessionStorage.setItem(SESSION, id);
     return this.getSession();
   },
+  async requestPasswordReset() { /* sample mode: nothing is e-mailed */ },
+  async updatePassword(password) {
+    const db = load(); const id = requireMe();
+    const u = db.users.find((x) => x.id === id); u.password = password; save(db);
+  },
   async signOut() { sessionStorage.removeItem(SESSION); listeners.forEach((fn) => fn()); },
   onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   async resetDemo() { localStorage.removeItem(KEY); sessionStorage.removeItem(SESSION); listeners.forEach((fn) => fn()); },

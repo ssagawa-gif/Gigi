@@ -209,3 +209,21 @@ export function ConfirmButton({ children, confirmText, onConfirm, className = 'b
     </button>
   );
 }
+
+/** Password input with an eye button to show / hide what was typed. */
+export function PasswordField({ value, onChange, autoComplete, minLength, required = true, id, ariaLabel }) {
+  const { t } = useI18n();
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ position: 'relative' }}>
+      <input className="field" id={id} type={show ? 'text' : 'password'} value={value} onChange={onChange}
+        autoComplete={autoComplete} minLength={minLength} required={required} aria-label={ariaLabel}
+        style={{ paddingRight: 46 }} />
+      <button type="button" className="icon-btn" onClick={() => setShow(!show)}
+        aria-label={show ? t('auth.hide') : t('auth.show')} title={show ? t('auth.hide') : t('auth.show')}
+        style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }}>
+        <Icon name={show ? 'eyeOff' : 'eye'} size={19} />
+      </button>
+    </div>
+  );
+}

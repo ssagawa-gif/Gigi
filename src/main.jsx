@@ -11,4 +11,9 @@ import '@fontsource/dm-sans/latin-600.css';
 import '@fontsource/dm-sans/latin-700.css';
 import './styles.css';
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+import { api } from './lib/api.js';
+
+// Wait for a password-reset link (if any) to be turned into a session before the router starts.
+Promise.resolve(api.ready).finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+});

@@ -12,6 +12,7 @@ import { Sharing, Plans, Settings, NotificationsList } from './pages/patient/Mor
 import { Queue, Agenda, Patients, DoctorNotifications, DoctorProfileEdit } from './pages/doctor/Console.jsx';
 import { Phone, Loading } from './components/ui.jsx';
 import Admin from './pages/Admin.jsx';
+import { ForgotPassword, ResetPassword } from './pages/Password.jsx';
 
 function Guard({ role, children }) {
   const { session } = useSession();
@@ -57,6 +58,8 @@ export default function App() {
             <Route path="/" element={<Welcome />} />
             <Route path="/consent" element={<Consent />} />
             <Route path="/auth" element={<Auth role="patient" />} />
+            <Route path="/forgot" element={<ForgotPassword />} />
+            <Route path="/reset" element={<ResetPassword />} />
             <Route path="/about" element={P(<AboutYou />)} />
             <Route path="/home" element={P(<Home />)} />
             <Route path="/record" element={P(<Record />)} />
