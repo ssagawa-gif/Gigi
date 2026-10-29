@@ -26,7 +26,7 @@ export function Phone({ children, nav = false, wide = false }) {
   const { session } = useSession();
   if (desktop) {
     if (session?.profile?.role === 'patient') return <PatientDesktop wide={wide}>{children}</PatientDesktop>;
-    return <div className="desk-stage"><div className="desk-card">{children}</div></div>;
+    return <DeskSplit>{children}</DeskSplit>;
   }
   return (
     <div className="stage">
@@ -34,6 +34,26 @@ export function Phone({ children, nav = false, wide = false }) {
         <div className={'screen' + (nav ? ' with-nav' : '')}>{children}</div>
         {nav && <BottomNav />}
       </div>
+    </div>
+  );
+}
+
+/** Desktop, before login: cherry brand panel on the left, the screen on the right. */
+function DeskSplit({ children }) {
+  const { t } = useI18n();
+  return (
+    <div className="desk-split">
+      <div className="brand-panel">
+        <span className="logo">GiGi<span className="dots"><i /><i /><i /></span></span>
+        <h1>{t('welcome.headline')}</h1>
+        <p>{t('welcome.sub')}</p>
+        <div className="brand-points">
+          {[['history', 'welcome.p1'], ['steth', 'welcome.p2'], ['shield', 'welcome.p3']].map(([i, k]) => (
+            <div key={k} className="row"><Icon name={i} size={18} /><span className="serif" style={{ fontSize: 20 }}>{t(k)}</span></div>
+          ))}
+        </div>
+      </div>
+      <div className="split-side"><div className="split-content">{children}</div></div>
     </div>
   );
 }

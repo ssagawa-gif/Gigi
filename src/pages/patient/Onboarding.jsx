@@ -22,11 +22,15 @@ export function Welcome() {
   return (
     <Phone>
       <LangPicker compact />
-      <div style={{ height: 40 }} />
-      <Logo />
-      <h1 className="center mt16" style={{ fontSize: 30 }}>{t('welcome.headline')}</h1>
-      <p className="muted small center" style={{ margin: '12px 20px 28px' }}>{t('welcome.sub')}</p>
-      <div className="card stack">
+      <div className="mobile-only">
+        <div style={{ height: 40 }} />
+        <Logo />
+        <h1 className="center mt16" style={{ fontSize: 30 }}>{t('welcome.headline')}</h1>
+        <p className="muted small center" style={{ margin: '12px 20px 28px' }}>{t('welcome.sub')}</p>
+      </div>
+      <h1 className="desk-only" style={{ marginTop: 48 }}>{t('welcome.deskTitle')}</h1>
+      <p className="desk-only muted">{t('auth.sub')}</p>
+      <div className="card stack mobile-only">
         {[['history', 'welcome.p1'], ['steth', 'welcome.p2'], ['shield', 'welcome.p3']].map(([i, k]) => (
           <div key={k} className="row"><Icon name={i} size={18} style={{ color: 'var(--cherry)' }} /><span className="serif" style={{ fontSize: 17 }}>{t(k)}</span></div>
         ))}
