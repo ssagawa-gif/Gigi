@@ -95,6 +95,6 @@ jobs:
         run: |
           q() { psql -v ON_ERROR_STOP=0 -tA -F ' | ' -c "$1" 2>&1 | sed -E 's/[^ @|"]+@[^ @|"]+/<email>/g'; }
           echo "::notice::Last notifications (type | e-mailed | when): $(q "select type, emailed_at is not null, to_char(created_at,'HH24:MI') from public.notifications order by created_at desc limit 3" | tr '\n' ';')"
-          echo "::notice::Doctors (total | verified | without specialty): $(q "select count(*), count(*) filter (where verified), count(*) filter (where coalesce(specialty,'')='') from public.doctors")  Free future slots: $(q "select count(*) from public.slots where not booked and starts_at > now()")"
+          echo "::notice::Doctors (total | verified | without specialty): $(q "select count(*), count(*) filter (where verified), count(*) filter (where coalesce(specialty,'')='') from public.doctors")  Free future slots: $(q "select count(*) from public.slots where not booked and starts_at > now()")  Admins: $(q "select count(*) from public.admins")"
           echo "::notice::E-mail trigger installed: $(q "select count(*) from pg_trigger where tgname='notifications_email'")  pg_net: $(q "select extversion from pg_extension where extname='pg_net'")"
           echo "::notice::Last calls to the e-mail function (status | timed out | reply): $(q "select status_code, timed_out, left(coalesce(content, error_msg, ''), 160) from net._http_response order by created desc limit 3" | tr '\n' ';')"
