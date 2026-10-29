@@ -32,27 +32,38 @@ jobs:
       - name: Install psql
         if: steps.check.outputs.ready == 'true'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
-      - name: Test the database connection
+      - name: Read the database address (works with any characters in the password)
         if: steps.check.outputs.ready == 'true'
         env:
           DB: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          # Shows user/host/port (never the password) and the exact reason if it fails.
-          SAFE=$(printf '%s' "$DB" | sed -E 's#(://[^:]+):[^@]*@#\1:***@#')
-          echo "Connecting to: $SAFE"
-          case "$DB" in *"["*|*"]"*) echo "::error::SUPABASE_DB_URL still contains [ or ] — replace [YOUR-PASSWORD] (with the brackets) by the password.";; esac
-          case "$DB" in *"db.$PROJECT_REF.supabase.co"*) echo "::error::This is the Direct connection URI. Use the Session pooler URI (host ends with pooler.supabase.com).";; esac
-          if ! psql "$DB" -v ON_ERROR_STOP=1 -tAc 'select 1' > /dev/null 2> err.txt; then
-            echo "::error::Cannot connect: $(head -c 300 err.txt | tr '\n' ' ')"; exit 1
+          # Split postgresql://USER:PASSWORD@HOST:PORT/DB by hand, so symbols such as ? / # @ in the
+          # password don't break it. The password is masked and never printed.
+          rest="${DB#*://}"; cred="${rest%@*}"; hostpart="${rest##*@}"
+          user="${cred%%:*}"; pass="${cred#*:}"
+          host="${hostpart%%[:/]*}"; port="$(printf '%s' "$hostpart" | sed -nE 's#^[^:/]+:([0-9]+).*#\1#p')"
+          dbname="$(printf '%s' "$hostpart" | sed -nE 's#^[^/]*/([^?]*).*#\1#p')"
+          echo "::add-mask::$pass"
+          case "$pass" in *"["*|*"]"*|YOUR-PASSWORD) echo "::error::Replace [YOUR-PASSWORD] (with the brackets) by the database password."; exit 1;; esac
+          case "$host" in db.*) echo "::error::This is the Direct connection address. Use the Session pooler one (host ends with pooler.supabase.com)."; exit 1;; esac
+          { echo "PGUSER=$user"; echo "PGPASSWORD=$pass"; echo "PGHOST=$host"; echo "PGPORT=${port:-5432}"; echo "PGDATABASE=${dbname:-postgres}"; echo "PGSSLMODE=require"; } >> "$GITHUB_ENV"
+          echo "Will connect to $host:${port:-5432} as $user"
+      - name: Test the database connection
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          if ! psql -v ON_ERROR_STOP=1 -tAc 'select 1' > /dev/null 2> err.txt; then
+            if grep -qi "password authentication failed" err.txt; then echo "::error::Wrong database password in SUPABASE_DB_URL.";
+            elif grep -qiE "could not translate|could not connect|timeout|Network is unreachable" err.txt; then echo "::error::Cannot reach the database host. Check you copied the Session pooler address.";
+            elif grep -qi "tenant or user not found" err.txt; then echo "::error::Wrong user in SUPABASE_DB_URL (it should look like postgres.vnalhjesbjjdslbwchjg).";
+            else echo "::error::Cannot connect to the database (details hidden to protect the password)."; fi
+            exit 1
           fi
           echo "Connection OK"
       - name: Apply database schema and updates (safe to re-run)
         if: steps.check.outputs.ready == 'true'
-        env:
-          DB: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/schema.sql
-          for f in supabase/updates/*.sql; do echo "Applying $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f"; done
+          psql -v ON_ERROR_STOP=1 -q -f supabase/schema.sql
+          for f in supabase/updates/*.sql; do echo "Applying $f"; psql -v ON_ERROR_STOP=1 -q -f "$f"; done
       - uses: supabase/setup-cli@v1
         if: steps.check.outputs.ready == 'true'
         with:
