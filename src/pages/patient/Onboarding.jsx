@@ -7,12 +7,10 @@ import { api, IS_DEMO } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
 import { LAURA, MARTA } from '../../lib/seed.js';
 
+import LogoMark from '../../components/Logo.jsx';
+
 export function Logo({ size = 64 }) {
-  return (
-    <div className="center">
-      <span className="logo" style={{ fontSize: size }}>GiGi<span className="dots"><i /><i /><i /></span></span>
-    </div>
-  );
+  return <LogoMark size={size} center />;
 }
 
 export function Welcome() {
@@ -28,7 +26,8 @@ export function Welcome() {
         <h1 className="center mt16" style={{ fontSize: 30 }}>{t('welcome.headline')}</h1>
         <p className="muted small center" style={{ margin: '12px 20px 28px' }}>{t('welcome.sub')}</p>
       </div>
-      <h1 className="desk-only" style={{ marginTop: 48 }}>{t('welcome.deskTitle')}</h1>
+      <div className="desk-only" style={{ marginTop: 40 }}><LogoMark size={56} /></div>
+      <h1 className="desk-only" style={{ marginTop: 8 }}>{t('welcome.deskTitle')}</h1>
       <p className="desk-only muted">{t('auth.sub')}</p>
       <div className="card stack mobile-only">
         {[['history', 'welcome.p1'], ['steth', 'welcome.p2'], ['shield', 'welcome.p3']].map(([i, k]) => (

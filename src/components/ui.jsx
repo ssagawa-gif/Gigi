@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
+import Logo from './Logo.jsx';
 import { useI18n, LANGS } from '../i18n/index.jsx';
 import { api } from '../lib/api.js';
 import { useData, useSession } from '../lib/session.jsx';
@@ -44,7 +45,7 @@ function DeskSplit({ children }) {
   return (
     <div className="desk-split">
       <div className="brand-panel">
-        <span className="logo">GiGi<span className="dots"><i /><i /><i /></span></span>
+        <Logo size={84} light />
         <h1>{t('welcome.headline')}</h1>
         <p>{t('welcome.sub')}</p>
         <div className="brand-points">
@@ -74,7 +75,7 @@ function PatientDesktop({ children, wide }) {
   return (
     <div className="console">
       <aside className="sidebar">
-        <span className="logo">GiGi<span className="dots"><i /><i /><i /></span></span>
+        <Logo size={40} light style={{ margin: '0 8px 18px', alignSelf: 'flex-start' }} />
         {links.map(([to, icon, label, n]) => (
           <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'active' : '')}>
             <Icon name={icon} size={18} />{label}{n ? <span className="count">{n}</span> : null}

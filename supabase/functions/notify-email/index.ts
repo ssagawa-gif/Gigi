@@ -56,8 +56,11 @@ Deno.serve(async (req) => {
       from: Deno.env.get('EMAIL_FROM') || 'GiGi <onboarding@resend.dev>',
       to: u.user.email,
       subject,
-      html: `<div style="font-family:Arial,sans-serif;background:#F5EEE8;padding:24px;color:#2A1A1C">
-        <div style="font-family:Georgia,serif;font-size:32px;color:#561821">GiGi</div>
+      // Same brand as the app: Instrument Serif logo with three Persimmon dots, DM Sans text
+      // (e-mail apps that block web fonts fall back to Georgia / Arial).
+      html: `<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+      <div style="font-family:'DM Sans',Arial,sans-serif;background:#F5EEE8;padding:24px;color:#2A1A1C">
+        <div style="font-family:'Instrument Serif',Georgia,serif;font-size:40px;line-height:1;color:#561821;display:inline-block;position:relative;padding-right:10px">GiGi<span style="position:absolute;top:0;right:0;letter-spacing:1px;font-family:Arial,sans-serif;font-size:10px;line-height:1;color:#E2683C">&#9679;&#9679;&#9679;</span></div>
         <p style="font-size:15px">${body}</p>
         <a href="${link}" style="display:inline-block;background:#561821;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none">GiGi →</a>
       </div>`,

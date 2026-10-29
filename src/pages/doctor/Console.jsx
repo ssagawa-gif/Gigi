@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router-dom';
 import Icon from '../../components/Icon.jsx';
+import Logo from '../../components/Logo.jsx';
 import TrendChart from '../../components/TrendChart.jsx';
 import Compare from '../../components/Compare.jsx';
 import { StatusBadge, Loading, Empty, Bell, LangPicker } from '../../components/ui.jsx';
@@ -29,7 +30,7 @@ export function DoctorShell({ children, title, actions }) {
   return (
     <div className="console">
       <aside className="sidebar">
-        <span className="logo">GiGi<span className="dots"><i /><i /><i /></span></span>
+        <Logo size={40} light style={{ margin: '0 8px 18px', alignSelf: 'flex-start' }} />
         <div className="tiny" style={{ opacity: .7, margin: '-12px 8px 16px' }}>{t('doc.console')}</div>
         {links.map(([to, icon, label, n]) => (
           <NavLink key={to} to={to} end={to === '/doctor'} className={({ isActive }) => (isActive ? 'active' : '')}>
