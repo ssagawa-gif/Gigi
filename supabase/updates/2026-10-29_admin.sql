@@ -11,9 +11,19 @@ alter table public.doctors add column if not exists review_status text not null 
   check (review_status in ('pending','approved','rejected'));
 update public.doctors set review_status = 'approved' where verified and review_status = 'pending';
 
+-- Admin e-mails are stored only as SHA-256 hashes. Anyone who signs up (now or later)
+-- with one of these e-mails becomes a GiGi admin automatically.
+create table if not exists public.admin_email_hashes (hash text primary key);
+alter table public.admin_email_hashes enable row level security;  -- no policies: nobody reads it from the app
+insert into public.admin_email_hashes (hash) values ('cae76e9e41696da64745f0f77871162f597d8dc5a70fafb79a4f7153a651177c') on conflict do nothing;
+
+create or replace function public.email_is_admin(p_email text)
+returns boolean language sql stable security definer set search_path = public, extensions as $$
+  select exists (select 1 from admin_email_hashes where hash = encode(extensions.digest(lower(p_email), 'sha256'), 'hex'));
+$$;
+
 insert into public.admins (user_id)
-select id from auth.users
-where encode(extensions.digest(lower(email), 'sha256'), 'hex') in ('cae76e9e41696da64745f0f77871162f597d8dc5a70fafb79a4f7153a651177c')
+select id from auth.users where public.email_is_admin(email)
 on conflict do nothing;
 
 create or replace function public.is_admin()
@@ -57,6 +67,9 @@ begin
   values (new.id, v_role, new.raw_user_meta_data->>'full_name',
           coalesce(new.raw_user_meta_data->>'language','en'), now());
   if v_role = 'doctor' then insert into doctors (id) values (new.id); end if;
+  if public.email_is_admin(new.email) then
+    insert into admins (user_id) values (new.id) on conflict do nothing;
+  end if;
   insert into notifications (user_id, type, data, link)
   values (new.id, case when v_role = 'doctor' then 'welcome_doctor' else 'welcome' end,
           jsonb_build_object('name', new.raw_user_meta_data->>'full_name'),

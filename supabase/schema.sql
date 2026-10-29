@@ -168,6 +168,9 @@ begin
   values (new.id, v_role, new.raw_user_meta_data->>'full_name',
           coalesce(new.raw_user_meta_data->>'language','en'), now());
   if v_role = 'doctor' then insert into doctors (id) values (new.id); end if;
+  if public.email_is_admin(new.email) then  -- defined in updates/2026-10-29_admin.sql
+    insert into admins (user_id) values (new.id) on conflict do nothing;
+  end if;
   insert into notifications (user_id, type, data, link)
   values (new.id, case when v_role = 'doctor' then 'welcome_doctor' else 'welcome' end,
           jsonb_build_object('name', new.raw_user_meta_data->>'full_name'),
