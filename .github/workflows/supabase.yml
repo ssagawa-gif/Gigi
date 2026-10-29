@@ -1,0 +1,59 @@
+# Applies database changes and deploys the e-mail function to GiGi's Supabase project
+# every time something in supabase/ changes on main (or when run by hand from Actions).
+# One-time setup — repository secrets (Settings > Secrets and variables > Actions > Secrets):
+#   SUPABASE_DB_URL        Supabase > Connect > "Session pooler" URI, with the database password filled in
+#   SUPABASE_ACCESS_TOKEN  supabase.com/dashboard/account/tokens > Generate new token
+#   RESEND_API_KEY         resend.com > API Keys (optional: without it, e-mails are skipped)
+name: Update Supabase
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/supabase.yml']
+  workflow_dispatch:
+concurrency:
+  group: supabase
+  cancel-in-progress: false
+env:
+  PROJECT_REF: vnalhjesbjjdslbwchjg
+  APP_URL: https://ssagawa-gif.github.io/Gigi/
+jobs:
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        id: check
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -n "$DB" ] && [ -n "$TOKEN" ]; then echo "ready=true" >> "$GITHUB_OUTPUT";
+          else echo "::warning::Add the SUPABASE_DB_URL and SUPABASE_ACCESS_TOKEN secrets (see the top of this file). Nothing was changed."; echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Install psql
+        if: steps.check.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Apply database schema and updates (safe to re-run)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/schema.sql
+          for f in supabase/updates/*.sql; do echo "Applying $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f"; done
+      - uses: supabase/setup-cli@v1
+        if: steps.check.outputs.ready == 'true'
+        with:
+          version: latest
+      - name: Set e-mail secrets
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then echo "::warning::No RESEND_API_KEY secret: e-mails will not be sent yet."; exit 0; fi
+          supabase secrets set --project-ref "$PROJECT_REF" \
+            RESEND_API_KEY="$RESEND_API_KEY" APP_URL="$APP_URL" EMAIL_FROM="GiGi <onboarding@resend.dev>"
+      - name: Deploy the notify-email function
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy notify-email --project-ref "$PROJECT_REF" --no-verify-jwt --use-api

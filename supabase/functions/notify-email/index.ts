@@ -1,6 +1,8 @@
 // Supabase Edge Function: sends an e-mail for every new row in `notifications`.
-// Triggered by a Database Webhook (Database > Webhooks > INSERT on public.notifications).
-// Secrets needed: RESEND_API_KEY, EMAIL_FROM, APP_URL  (SUPABASE_URL + SERVICE_ROLE_KEY are automatic)
+// Called by the trigger in supabase/updates/2026-10-29_email_trigger.sql with { id }.
+// Deployed automatically by .github/workflows/supabase.yml (with --no-verify-jwt: safe,
+// because the function only e-mails rows that really exist and only once).
+// Secrets: RESEND_API_KEY, EMAIL_FROM, APP_URL (SUPABASE_URL + SERVICE_ROLE_KEY are automatic).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const MARKERS: Record<string, Record<string, string>> = {
@@ -79,10 +81,16 @@ function html(m: Mail, link: string) {
 }
 
 Deno.serve(async (req) => {
-  const { record } = await req.json();
-  if (!record?.user_id) return new Response('no record', { status: 400 });
+  const payload = await req.json().catch(() => ({}));
+  const id = payload?.id || payload?.record?.id;
+  if (!id) return new Response('no id', { status: 400 });
 
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  // Read the notification from the database (never trust the request body) and send it once.
+  const { data: record } = await sb.from('notifications').select('*').eq('id', id).maybeSingle();
+  if (!record) return new Response('unknown notification', { status: 404 });
+  if (record.emailed_at) return new Response('already sent');
+  await sb.from('notifications').update({ emailed_at: new Date().toISOString() }).eq('id', id).is('emailed_at', null);
   const { data: u } = await sb.auth.admin.getUserById(record.user_id);
   const { data: p } = await sb.from('profiles').select('language, full_name').eq('id', record.user_id).single();
   const lang = (p?.language as string) || 'en';

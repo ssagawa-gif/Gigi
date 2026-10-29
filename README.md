@@ -56,14 +56,17 @@ The demo file (`npm run build:html`) ignores `.env.production` and always runs i
 2. Nobody can make themselves a doctor. In Supabase, open **Table Editor → doctors** and set `verified` to **true** for that doctor. Patients will see them from then on.
 3. In **Agenda**, the doctor opens free times, and patients book them from the doctor's profile.
 
-### 5. E-mail notifications
-1. Create a free account at resend.com and generate an **API key**.
-2. In Supabase, go to **Edge Functions → Deploy a new function → Via Editor**. Name it `notify-email`, paste `supabase/functions/notify-email/index.ts` and deploy.
-3. Under **Edge Functions → Secrets**, add `RESEND_API_KEY`, `APP_URL` (the site address) and `EMAIL_FROM` (for example `GiGi <onboarding@resend.dev>`).
-4. In **Database → Webhooks → Create a new hook**, choose table `notifications`, event **Insert**, type **Supabase Edge Functions**, function `notify-email`.
-5. Until you verify your own domain, Resend only delivers to your own address. Verify GiGi's domain in Resend before e-mailing doctors.
+### 5. Automatic database updates + e-mails (GitHub Actions)
+`.github/workflows/supabase.yml` applies `supabase/schema.sql` and every file in `supabase/updates/` (all safe to re-run). It also deploys the `notify-email` function and sets its secrets. It runs whenever something in `supabase/` changes, or by hand from **Actions → Update Supabase → Run workflow**.
 
-In-app notifications (the bell with a counter) work without this step.
+One-time setup, in GitHub under **Settings → Secrets and variables → Actions → Secrets → New repository secret**:
+- `SUPABASE_DB_URL`: in Supabase, click **Connect**, choose the **Session pooler** URI and replace `[YOUR-PASSWORD]` with the database password.
+- `SUPABASE_ACCESS_TOKEN`: create one under supabase.com → Account → **Access Tokens**.
+- `RESEND_API_KEY`: from resend.com → **API Keys**. Without this key, e-mails are skipped.
+
+E-mails sent: a welcome e-mail on sign-up (patients and doctors), a new review request and new booking or cancellation (doctors), and a review answered (patients). All are in EN/PT/ES, matching each user's language. A database trigger calls the function with only the notification id, and the function sends each notification at most once.
+
+Until you verify your own domain in Resend, it only delivers to the Resend account owner's address. Verify GiGi's domain and change `EMAIL_FROM` in the workflow to e-mail real users.
 
 ### 6. Run locally (optional)
 Install Node.js 20 or later, then run `npm install` and `npm run dev`. For live mode, copy `.env.example` to `.env.local` and fill it in.
