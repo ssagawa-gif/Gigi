@@ -66,13 +66,13 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
 
 const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
-// Same brand as the app: Instrument Serif logo with three Persimmon dots, DM Sans text
-// (e-mail apps that block web fonts fall back to Georgia / Arial).
-function html(m: Mail, link: string) {
+// Same brand as the app. The logo is an image (public/email-logo.png, published with the site)
+// because Gmail strips the CSS that places the three dots above the last "i".
+function html(m: Mail, link: string, appUrl: string) {
   return `<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Instrument+Serif&display=swap" rel="stylesheet">
   <div style="background:#F5EEE8;padding:32px 16px;font-family:'DM Sans',Arial,sans-serif;color:#2A1A1C">
     <div style="max-width:520px;margin:0 auto;background:#FBF9F5;border:1px solid #E6DAD0;border-radius:20px;padding:32px">
-      <div style="font-family:'Instrument Serif',Georgia,serif;font-size:44px;line-height:1;color:#561821;display:inline-block;position:relative;padding:6px 16px 0 0">GiGi<span style="position:absolute;top:0;right:0;font-family:Arial,sans-serif;font-size:9px;letter-spacing:2px;line-height:1;color:#E2683C">&#9679;&#9679;&#9679;</span></div>
+      <img src="${appUrl}email-logo.png" width="120" height="72" alt="GiGi" style="display:block;border:0;outline:none;width:120px;height:auto">
       <h1 style="font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:28px;margin:24px 0 12px">${esc(m.title)}</h1>
       ${m.body.map((p) => `<p style="font-size:15px;line-height:1.5;margin:0 0 12px">${esc(p)}</p>`).join('')}
       <a href="${link}" style="display:inline-block;margin-top:12px;background:#561821;color:#fff;padding:13px 22px;border-radius:999px;text-decoration:none;font-weight:600">${esc(m.cta)}</a>
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       from: Deno.env.get('EMAIL_FROM') || 'GiGi <onboarding@resend.dev>',
       to: u.user.email,
       subject: mail.subject,
-      html: html(mail, link),
+      html: html(mail, link, Deno.env.get('APP_URL') || ''),
     }),
   });
   return new Response(await res.text(), { status: res.status });
