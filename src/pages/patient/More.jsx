@@ -158,16 +158,16 @@ export function Settings() {
         <button className="btn btn-ghost" onClick={async () => { await api.signOut(); await refresh(); nav('/'); }}>{t('settings.logout')}</button>
       </div>
 
+      {/* GiGi team only. On a computer these links live in the left menu; on a phone they stay here. */}
       {isAdmin && (
-        <>
+        <div className="mobile-only">
           <h3 className="mt24">{t('admin.title')}</h3>
           <button className="btn btn-primary mt8" onClick={() => nav('/admin')}>{t('admin.open')}</button>
-        </>
+          <h3 className="mt24">{t('settings.clinician')}</h3>
+          <p className="tiny muted">{t('settings.clinicianSub')}</p>
+          <button className="btn btn-ghost" onClick={() => nav('/doctor/login')}>{t('settings.openClinician')}</button>
+        </div>
       )}
-
-      <h3 className="mt24">{t('settings.clinician')}</h3>
-      <p className="tiny muted">{t('settings.clinicianSub')}</p>
-      <button className="btn btn-ghost" onClick={() => nav('/doctor/login')}>{t('settings.openClinician')}</button>
       {IS_DEMO && <button className="btn btn-link mt16" onClick={async () => { await api.resetDemo(); await refresh(); nav('/'); }}>{t('settings.resetDemo')}</button>}
     </Phone>
   );
