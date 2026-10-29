@@ -74,11 +74,18 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
+          case "$SUPABASE_ACCESS_TOKEN" in sbp_*) ;; *) echo "::error::SUPABASE_ACCESS_TOKEN should start with sbp_ (create it at supabase.com/dashboard/account/tokens). It is not the publishable or secret API key."; exit 1;; esac
           if [ -z "$RESEND_API_KEY" ]; then echo "::warning::No RESEND_API_KEY secret: e-mails will not be sent yet."; exit 0; fi
-          supabase secrets set --project-ref "$PROJECT_REF" \
-            RESEND_API_KEY="$RESEND_API_KEY" APP_URL="$APP_URL" EMAIL_FROM="GiGi <onboarding@resend.dev>"
+          case "$RESEND_API_KEY" in re_*) ;; *) echo "::error::RESEND_API_KEY should start with re_ (resend.com > API Keys)."; exit 1;; esac
+          if ! supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="$RESEND_API_KEY" APP_URL="$APP_URL" EMAIL_FROM="GiGi <onboarding@resend.dev>" > out.txt 2>&1; then
+            echo "::error::Could not set the function secrets: $(grep -vi 're_' out.txt | tail -3 | tr '\n' ' ')"; exit 1
+          fi
       - name: Deploy the notify-email function
         if: steps.check.outputs.ready == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase functions deploy notify-email --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+        run: |
+          if ! supabase functions deploy notify-email --project-ref "$PROJECT_REF" --no-verify-jwt --use-api > out.txt 2>&1; then
+            echo "::error::Could not deploy notify-email: $(tail -3 out.txt | tr '\n' ' ')"; exit 1
+          fi
+          tail -2 out.txt
