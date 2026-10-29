@@ -46,7 +46,7 @@ The source code lives in this repository. No health data is ever stored in the c
 ### 3. Connect the site to Supabase and publish
 1. Put the **Project URL** and the **anon / publishable** key in `.env.production` (already done for GiGi's project). Both are public by design: protection comes from the database rules. Never commit the `service_role` / secret key or the database password.
 2. (Optional) To use a Tally form for the waitlist, add a repository variable `VITE_WAITLIST_URL` under **Settings → Secrets and variables → Actions → Variables**. Without it, the app uses its own waitlist, saved in the `waitlist` table.
-3. In **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**. Every push to `main` then republishes the site at `https://<user>.github.io/<repo>/` (GiGi: https://ssagawa-gif.github.io/Gigi/).
+3. In **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**. Every push to `main` then republishes the site at `https://<user>.github.io/<repo>/` (GiGi: https://gigihealth.app/).
 4. In Supabase, under **Authentication → URL Configuration**, set **Site URL** to that address.
 
 The demo file (`npm run build:html`) ignores `.env.production` and always runs in sample mode.

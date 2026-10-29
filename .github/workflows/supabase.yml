@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 env:
   PROJECT_REF: vnalhjesbjjdslbwchjg
-  APP_URL: https://ssagawa-gif.github.io/Gigi/
+  APP_URL: https://gigihealth.app/
   EMAIL_FROM: GiGi <ola@gigihealth.app>
 jobs:
   supabase:
