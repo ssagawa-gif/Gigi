@@ -137,6 +137,12 @@ create table if not exists public.waitlist (
   created_at timestamptz default now()
 );
 
+-- Explicit access for the app's roles (works even if "Automatically expose new tables"
+-- is off). Row Level Security below still decides which ROWS each person can see.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant insert on public.waitlist to anon;
+
 -- =====================================================================
 -- Helper functions (security definer avoids recursive policies)
 -- =====================================================================
