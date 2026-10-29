@@ -342,7 +342,7 @@ export function DoctorProfileEdit() {
   const { session, showToast } = useSession();
   const { data, loading } = useData(() => api.getDoctor(session?.user?.id), [session?.user?.id]);
   const [f, setF] = useState(null);
-  useEffect(() => { if (data && !f) setF({ ...data, languages: (data.languages || []).join(', '), insurers: (data.insurers || []).join(', ') }); }, [data, f]);
+  useEffect(() => { if (data && !f) setF({ ...data, specialty: data.specialty || 'gyn', consultation: data.consultation || 'both', languages: (data.languages || []).join(', '), insurers: (data.insurers || []).join(', ') }); }, [data, f]);
   if (loading || !f) return <DoctorShell title={t('doc.nav.profile')}><Loading /></DoctorShell>;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   async function save() {

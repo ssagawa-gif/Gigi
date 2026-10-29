@@ -103,7 +103,7 @@ export default {
   'review.send': 'Enviar ao médico', 'review.sent': 'Enviado. O médico foi avisado.',
 
   'find.title': 'Encontre um médico de confiança', 'find.search': 'Buscar por nome ou especialidade', 'find.count': '{n} médicos encontrados', 'find.none': 'Nenhum médico encontrado.',
-  'spec.gyn': 'Ginecologista e obstetra', 'spec.endo': 'Endocrinologista', 'spec.fertility': 'Especialista em fertilidade', 'spec.gp': 'Clínico geral', 'spec.undefined': '',
+  'spec.gyn': 'Ginecologista e obstetra', 'spec.endo': 'Endocrinologista', 'spec.fertility': 'Especialista em fertilidade', 'spec.gp': 'Clínico geral', 'spec.undefined': '', 'spec.': '', 'spec.null': '',
   'lang.English': 'Inglês', 'lang.Portuguese': 'Português',
   'doctor.profile': 'Perfil do médico', 'doctor.languages': 'Idiomas', 'doctor.consultation': 'Consulta', 'doctor.insurers': 'Convênios aceitos',
   'consult.both': 'Presencial ou vídeo', 'consult.in_person': 'Presencial', 'consult.video': 'Vídeo',
@@ -138,6 +138,8 @@ export default {
   'settings.openClinician': 'Abrir área do médico', 'settings.resetDemo': 'Restaurar dados de exemplo',
 
   'notif.title': 'Notificações', 'notif.none': 'Nenhuma notificação ainda.', 'notif.markAll': 'Marcar todas como lidas',
+  'notif.welcome': 'Boas-vindas ao GiGi, {name}! Comece adicionando seus últimos exames.',
+  'notif.welcome_doctor': 'Boas-vindas ao GiGi, {name}! Complete seu perfil e abra sua agenda enquanto verificamos sua conta.',
   'notif.review_requested': '{patient} pediu sua revisão de um resultado de {marker}',
   'notif.review_answered': '{doctor} revisou seu resultado de {marker}',
   'notif.appointment_booked': '{patient} marcou uma consulta: {when}',

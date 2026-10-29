@@ -103,7 +103,7 @@ export default {
   'review.send': 'Send to the doctor', 'review.sent': 'Sent. The doctor has been notified.',
 
   'find.title': 'Find a doctor I trust', 'find.search': 'Search by name or specialty', 'find.count': '{n} doctors found', 'find.none': 'No doctors found.',
-  'spec.gyn': 'Gynaecologist and obstetrician', 'spec.endo': 'Endocrinologist', 'spec.fertility': 'Fertility specialist', 'spec.gp': 'General practitioner', 'spec.undefined': '',
+  'spec.gyn': 'Gynaecologist and obstetrician', 'spec.endo': 'Endocrinologist', 'spec.fertility': 'Fertility specialist', 'spec.gp': 'General practitioner', 'spec.undefined': '', 'spec.': '', 'spec.null': '',
   'lang.English': 'English', 'lang.Portuguese': 'Portuguese',
   'doctor.profile': 'Doctor profile', 'doctor.languages': 'Languages', 'doctor.consultation': 'Consultation', 'doctor.insurers': 'Insurers accepted',
   'consult.both': 'In person or video', 'consult.in_person': 'In person', 'consult.video': 'Video',
@@ -138,6 +138,8 @@ export default {
   'settings.openClinician': 'Open the clinician view', 'settings.resetDemo': 'Reset sample data',
 
   'notif.title': 'Notifications', 'notif.none': 'No notifications yet.', 'notif.markAll': 'Mark all as read',
+  'notif.welcome': 'Welcome to GiGi, {name}! Start by adding your latest lab results.',
+  'notif.welcome_doctor': 'Welcome to GiGi, {name}! Complete your profile and open your agenda while we verify your account.',
   'notif.review_requested': '{patient} asked you to review a {marker} result',
   'notif.review_answered': '{doctor} reviewed your {marker} result',
   'notif.appointment_booked': '{patient} booked a visit: {when}',

@@ -168,6 +168,11 @@ begin
   values (new.id, v_role, new.raw_user_meta_data->>'full_name',
           coalesce(new.raw_user_meta_data->>'language','en'), now());
   if v_role = 'doctor' then insert into doctors (id) values (new.id); end if;
+  -- Welcome message: shows in the app's bell and is e-mailed by the notify-email function
+  insert into notifications (user_id, type, data, link)
+  values (new.id, case when v_role = 'doctor' then 'welcome_doctor' else 'welcome' end,
+          jsonb_build_object('name', new.raw_user_meta_data->>'full_name'),
+          case when v_role = 'doctor' then '/doctor/profile' else '/add' end);
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;

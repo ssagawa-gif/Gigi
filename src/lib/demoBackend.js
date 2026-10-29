@@ -78,6 +78,7 @@ export const demoBackend = {
     const id = 'u-' + uid();
     db.users.push({ id, email, password });
     db.profiles.push({ id, role: role || 'patient', full_name, language, reasons: [], consent_at: nowIso() });
+    notify(db, id, role === 'doctor' ? 'welcome_doctor' : 'welcome', { name: full_name }, role === 'doctor' ? '/doctor/profile' : '/add');
     if (role === 'doctor') db.doctors.push({ id, verified: true, specialty: 'gyn', area: '', languages: [], insurers: [], consultation: 'both', first_visit_fee: null, results_visit_fee: null, bio: '' });
     save(db);
     sessionStorage.setItem(SESSION, id);
