@@ -16,6 +16,7 @@ concurrency:
 env:
   PROJECT_REF: vnalhjesbjjdslbwchjg
   APP_URL: https://ssagawa-gif.github.io/Gigi/
+  EMAIL_FROM: GiGi <ola@gigihealth.app>
 jobs:
   supabase:
     runs-on: ubuntu-latest
@@ -77,7 +78,7 @@ jobs:
           case "$SUPABASE_ACCESS_TOKEN" in sbp_*) ;; *) echo "::error::SUPABASE_ACCESS_TOKEN should start with sbp_ (create it at supabase.com/dashboard/account/tokens). It is not the publishable or secret API key."; exit 1;; esac
           if [ -z "$RESEND_API_KEY" ]; then echo "::warning::No RESEND_API_KEY secret: e-mails will not be sent yet."; exit 0; fi
           case "$RESEND_API_KEY" in re_*) ;; *) echo "::error::RESEND_API_KEY should start with re_ (resend.com > API Keys)."; exit 1;; esac
-          if ! supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="$RESEND_API_KEY" APP_URL="$APP_URL" EMAIL_FROM="GiGi <onboarding@resend.dev>" > out.txt 2>&1; then
+          if ! supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="$RESEND_API_KEY" APP_URL="$APP_URL" EMAIL_FROM="$EMAIL_FROM" > out.txt 2>&1; then
             echo "::error::Could not set the function secrets: $(grep -vi 're_' out.txt | tail -3 | tr '\n' ' ')"; exit 1
           fi
       - name: Deploy the notify-email function
@@ -94,5 +95,6 @@ jobs:
         run: |
           q() { psql -v ON_ERROR_STOP=0 -tA -F ' | ' -c "$1" 2>&1 | sed -E 's/[^ @|"]+@[^ @|"]+/<email>/g'; }
           echo "::notice::Last notifications (type | e-mailed | when): $(q "select type, emailed_at is not null, to_char(created_at,'HH24:MI') from public.notifications order by created_at desc limit 3" | tr '\n' ';')"
+          echo "::notice::Doctors (total | verified | without specialty): $(q "select count(*), count(*) filter (where verified), count(*) filter (where coalesce(specialty,'')='') from public.doctors")  Free future slots: $(q "select count(*) from public.slots where not booked and starts_at > now()")"
           echo "::notice::E-mail trigger installed: $(q "select count(*) from pg_trigger where tgname='notifications_email'")  pg_net: $(q "select extversion from pg_extension where extname='pg_net'")"
           echo "::notice::Last calls to the e-mail function (status | timed out | reply): $(q "select status_code, timed_out, left(coalesce(content, error_msg, ''), 160) from net._http_response order by created desc limit 3" | tr '\n' ';')"

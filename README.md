@@ -66,7 +66,7 @@ One-time setup, in GitHub under **Settings → Secrets and variables → Actions
 
 E-mails sent: a welcome e-mail on sign-up (patients and doctors), a new review request and new booking or cancellation (doctors), and a review answered (patients). All are in EN/PT/ES, matching each user's language. A database trigger calls the function with only the notification id, and the function sends each notification at most once.
 
-Until you verify your own domain in Resend, it only delivers to the Resend account owner's address. Verify GiGi's domain and change `EMAIL_FROM` in the workflow to e-mail real users.
+Until you verify your own domain in Resend, it only delivers to the Resend account owner's address. Verify GiGi's domain and change `EMAIL_FROM` in the workflow to e-mail real users (done: `GiGi <ola@gigihealth.app>`, domain verified in Resend, region Ireland).
 
 ### 6. Run locally (optional)
 Install Node.js 20 or later, then run `npm install` and `npm run dev`. For live mode, copy `.env.example` to `.env.local` and fill it in.
