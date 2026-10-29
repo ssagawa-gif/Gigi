@@ -6,6 +6,7 @@ import TrendChart from '../../components/TrendChart.jsx';
 import Compare from '../../components/Compare.jsx';
 import { StatusBadge, Loading, Empty, Bell, LangPicker } from '../../components/ui.jsx';
 import { MarkerList } from '../patient/Record.jsx';
+import PatientSummary from '../../components/PatientSummary.jsx';
 import { NotificationsList } from '../patient/More.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api, IS_DEMO } from '../../lib/api.js';
@@ -103,6 +104,7 @@ function CaseView({ review }) {
   const { t, lang, fmtDate, fmtNum } = useI18n();
   const { showToast } = useSession();
   const { data, loading } = useData(() => api.listResults(review.patient_id), [review.patient_id]);
+  const { data: extra } = useData(async () => ({ appts: (await api.listAppointments()).filter((a) => a.patient_id === review.patient_id), reviews: (await api.listDoctorQueue()).filter((r) => r.patient_id === review.patient_id) }), [review.patient_id]);
   const [response, setResponse] = useState(review.response || '');
   const [rec, setRec] = useState(review.recommendation || '');
   const [busy, setBusy] = useState(false);
@@ -142,6 +144,8 @@ function CaseView({ review }) {
         {p.history_note && <p className="small mt8" style={{ marginBottom: 0 }}>{p.history_note}</p>}
         {review.note && <div className="card-tan mt16 small"><b>{t('doc.patientNote')}:</b> {review.note}</div>}
       </div>
+
+      <PatientSummary patient={review.patient || {}} results={results} appts={extra?.appts || []} reviews={extra?.reviews || []} />
 
       {last ? (
         <div className="card">
@@ -298,6 +302,7 @@ export function Patients() {
   const mine = (data || []).filter((s) => s.doctor_id === session?.user?.id && !s.revoked_at && new Date(s.expires_at) > now);
   const sel = pid || mine[0]?.patient_id;
   const { data: results } = useData(() => (sel ? api.listResults(sel) : Promise.resolve([])), [sel]);
+  const { data: extra } = useData(async () => (sel ? { appts: (await api.listAppointments()).filter((a) => a.patient_id === sel), reviews: (await api.listDoctorQueue()).filter((r) => r.patient_id === sel) } : { appts: [], reviews: [] }), [sel]);
   const [marker, setMarker] = useState(null);
   const groups = byMarker(results || []);
   const share = mine.find((s) => s.patient_id === sel);
@@ -315,9 +320,12 @@ export function Patients() {
             ))}
           </div>
           <div>
+            <div className="mt8" style={{ marginBottom: 16 }}>
+              <PatientSummary patient={share?.scopes.includes('history') ? share?.patient : { ...share?.patient, history_note: null }}
+                results={results || []} appts={extra?.appts || []} reviews={extra?.reviews || []} />
+            </div>
             <div className="card">
               <h2 style={{ fontSize: 28 }}>{share?.patient?.full_name}</h2>
-              {share?.scopes.includes('history') && share?.patient?.history_note && <p className="small">{share.patient.history_note}</p>}
               <div className="chips mt8">{['markers', 'compare'].map((k) => <button key={k} className={'chip' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{t('record.tab.' + (k === 'markers' ? 'bloodwork' : k))}</button>)}</div>
             </div>
             {tab === 'markers' && (

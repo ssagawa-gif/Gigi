@@ -125,7 +125,7 @@ export function Settings() {
   const countryName = useCountryName();
   const p = session?.profile || {};
   const { data: isAdmin } = useData(() => api.isAdmin(), []);
-  const [form, setForm] = useState({ full_name: p.full_name || '', city: p.city || '', country: p.country || 'ES', history_note: p.history_note || '' });
+  const [form, setForm] = useState({ full_name: p.full_name || '', city: p.city || '', country: p.country || 'ES', insurer: p.insurer || '', history_note: p.history_note || '' });
 
   async function save() { await api.updateProfile(form); await refresh(); showToast(t('settings.saved')); }
   async function exportData() {
@@ -144,6 +144,8 @@ export function Settings() {
         <div><label className="lbl">{t('settings.city')}</label><input className="field" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
         <div><label className="lbl">{t('check.country')}</label><select className="field" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>{COUNTRIES.map((c) => <option key={c} value={c}>{countryName(c)}</option>)}</select></div>
       </div>
+      <label className="lbl">{t('about.insurer')}</label>
+      <input className="field" value={form.insurer} onChange={(e) => setForm({ ...form, insurer: e.target.value })} />
       <label className="lbl">{t('record.personal')}</label>
       <textarea className="field" rows={3} value={form.history_note} onChange={(e) => setForm({ ...form, history_note: e.target.value })} />
       <button className="btn btn-primary mt16" onClick={save}>{t('common.save')}</button>

@@ -157,10 +157,11 @@ export function AboutYou() {
   const { session, refresh } = useSession();
   const [name, setName] = useState(session?.profile?.full_name || '');
   const [reasons, setReasons] = useState(session?.profile?.reasons || []);
+  const [insurer, setInsurer] = useState(session?.profile?.insurer || '');
   const opts = ['fertility', 'understand', 'doctor', 'history'];
   const toggle = (k) => setReasons(reasons.includes(k) ? reasons.filter((x) => x !== k) : [...reasons, k]);
   async function next() {
-    await api.updateProfile({ full_name: name, reasons });
+    await api.updateProfile({ full_name: name, reasons, insurer: insurer.trim() || null });
     await refresh();
     nav('/add?first=1');
   }
@@ -171,6 +172,8 @@ export function AboutYou() {
       <p className="muted small">{t('about.sub')}</p>
       <label className="lbl">{t('about.name')}</label>
       <input className="field" value={name} onChange={(e) => setName(e.target.value)} />
+      <label className="lbl">{t('about.insurer')}</label>
+      <input className="field" value={insurer} onChange={(e) => setInsurer(e.target.value)} placeholder="Sanitas, Adeslas, Bradesco Saúde…" />
       <label className="lbl">{t('about.why')}</label>
       <p className="tiny muted" style={{ marginTop: -2 }}>{t('about.all')}</p>
       <div className="stack">
