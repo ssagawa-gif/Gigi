@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone, TopBar, StatusBadge } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
-import { MARKERS, byCode, evaluate, buildResult, markerName } from '../../lib/markers.js';
+import { MARKERS, byCode, evaluate, buildResult, markerName, standardRange, phaseFromCycle, isPhaseMarker, needsAge } from '../../lib/markers.js';
+import { readLabPdf } from '../../lib/pdfReader.js';
 
 export const COUNTRIES = ['ES', 'BR', 'PT', 'FR', 'IT', 'DE', 'GB', 'IE', 'NL', 'CH', 'US', 'CA', 'MX', 'AR', 'CL', 'CO', 'PE', 'UY'];
 export function useCountryName() {
@@ -72,38 +73,72 @@ export function Upload() {
   );
 }
 
-const emptyRow = () => ({ code: '', value: '', unit: '', low: '', high: '' });
+const emptyRow = () => ({ code: '', value: '', unit: '', low: '', high: '', rangeSource: null });
+const GROUPS = ['reproductive', 'thyroid', 'metabolic', 'blood', 'preconception'];
 
 export function CheckResults() {
-  const { t, lang } = useI18n();
+  const { t, lang, fmtNum } = useI18n();
   const nav = useNavigate();
   const { state } = useLocation();
   const file = state?.file || null;
   const { session, showToast } = useSession();
   const countryName = useCountryName();
   const [ctx, setCtx] = useState({ lab: '', country: session?.profile?.country || 'ES', date: new Date().toISOString().slice(0, 10) });
+  const [cycle, setCycle] = useState({ day: '', length: 28, menopause: false });
+  const [age, setAge] = useState('');
   const [rows, setRows] = useState([emptyRow()]);
+  const [reading, setReading] = useState(!!file && /pdf$/i.test(file.type || file.name));
+  const [readInfo, setReadInfo] = useState(null);   // { found, textFound }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  const phase = phaseFromCycle(cycle.day, cycle.length, cycle.menopause);
+  const opts = { phase, age };
+  const withStd = (r, o = opts) => {
+    if (!r.code || !r.unit || r.rangeSource === 'lab' || r.rangeSource === 'manual') return r;
+    const std = standardRange(r.code, r.unit, o);
+    return { ...r, low: std ? (std[0] ?? '') : '', high: std ? (std[1] ?? '') : '', rangeSource: std ? 'gigi' : null };
+  };
+
+  // Read the PDF once and propose every result found
+  useEffect(() => {
+    if (!reading) return;
+    let alive = true;
+    readLabPdf(file).then((res) => {
+      if (!alive) return;
+      if (res.rows.length) setRows(res.rows.map((r) => withStd({ ...r, value: String(r.value), low: r.low ?? '', high: r.high ?? '' })));
+      setCtx((c) => ({ ...c, date: res.date || c.date, lab: res.lab || c.lab }));
+      setReadInfo({ found: res.rows.length, textFound: res.textFound });
+      setReading(false);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Phase or age changed: refresh the GiGi standard ranges that depend on them
+  useEffect(() => { setRows((rs) => rs.map((r) => withStd(r))); /* eslint-disable-next-line */ }, [phase, age]);
 
   const setRow = (i, patch) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   function chooseMarker(i, code) {
     const m = byCode[code];
-    setRow(i, { code, unit: m?.unit || '', low: m?.defaultRange?.[0] ?? '', high: m?.defaultRange?.[1] ?? '' });
+    setRow(i, withStd({ ...rows[i], code, unit: m?.unit || '', low: '', high: '', rangeSource: null }));
   }
   function chooseUnit(i, unit) {
-    const r = rows[i]; const m = byCode[r.code];
-    // ranges differ per unit: clear the defaults so the person types the range printed on her report
-    const keep = m && unit === m.unit && m.defaultRange;
-    setRow(i, { unit, low: keep ? m.defaultRange[0] : '', high: keep ? m.defaultRange[1] : '' });
+    setRow(i, withStd({ ...rows[i], unit, low: '', high: '', rangeSource: null }));
   }
-  const valid = rows.every((r) => r.code && r.value !== '' && r.unit) && ctx.date;
+  const editRange = (i, k, v) => setRow(i, { [k]: v.replace(',', '.'), rangeSource: 'manual' });
+  const valid = rows.length > 0 && rows.every((r) => r.code && r.value !== '' && r.unit) && ctx.date;
+  const anyPhase = rows.some((r) => isPhaseMarker(r.code));
+  const anyAge = rows.some((r) => needsAge(r.code));
 
   async function save() {
     setBusy(true); setErr('');
     try {
       const report = await api.addReport({ file, lab_name: ctx.lab, country: ctx.country, test_date: ctx.date });
-      const built = rows.map((r) => ({ ...buildResult({ code: r.code, value: r.value, unit: r.unit, low: r.low, high: r.high, date: ctx.date, lab: ctx.lab, country: ctx.country }), report_id: report.id }));
+      const built = rows.map((r) => ({
+        ...buildResult({ code: r.code, value: r.value, unit: r.unit, low: r.low, high: r.high, date: ctx.date, lab: ctx.lab, country: ctx.country,
+          context: { range_source: r.rangeSource || 'manual', ...(isPhaseMarker(r.code) ? { phase, cycle_day: cycle.day || null, cycle_length: cycle.length, menopause: cycle.menopause } : {}), ...(needsAge(r.code) ? { age: age || null } : {}) } }),
+        report_id: report.id }));
       await api.addResults(built);
       const flagged = built.find((r) => r.needs_review);
       showToast(t('check.saved'));
@@ -112,16 +147,20 @@ export function CheckResults() {
   }
 
   return (
-    <Phone>
+    <Phone wide>
       <TopBar title={t('check.title')} close />
       <div className="row between tiny muted"><span>{t('add.step', { n: 2 })}</span><span>100%</span></div>
       <div className="progress mt8"><i style={{ width: '100%' }} /></div>
       {file && (
         <div className="card list-item mt16"><Icon name="file" /><div><div style={{ fontWeight: 500 }}>{file.name}</div><div className="tiny muted">{(file.size / 1024).toFixed(0)} KB</div></div></div>
       )}
-      <p className="small muted mt16">{file ? t('check.introFile') : t('check.introManual')}</p>
+      {reading && <div className="card-tan small mt16" data-testid="reading">{t('check.reading')}</div>}
+      {readInfo && readInfo.found > 0 && <div className="card-tan small mt16" data-testid="read-ok"><b>{t('check.readOk', { n: readInfo.found })}</b> {t('check.readOkSub')}</div>}
+      {readInfo && readInfo.found === 0 && <div className="card-tan small mt16" data-testid="read-none">{readInfo.textFound ? t('check.readNone') : t('check.readNoText')}</div>}
+      {file && !/pdf$/i.test(file.type || file.name) && <div className="card-tan small mt16">{t('check.photo')}</div>}
+      {!file && <p className="small muted mt16">{t('check.introManual')}</p>}
 
-      <div className="card">
+      <div className="card mt16">
         <label className="lbl" style={{ marginTop: 0 }}>{t('check.lab')}</label>
         <input className="field" value={ctx.lab} onChange={(e) => setCtx({ ...ctx, lab: e.target.value })} placeholder="Synlab Barcelona" />
         <div className="grid2">
@@ -134,6 +173,31 @@ export function CheckResults() {
         </div>
       </div>
 
+      {anyPhase && (
+        <div className="card mt16" data-testid="cycle">
+          <div style={{ fontWeight: 600 }}>{t('cycle.title')}</div>
+          <p className="tiny muted" style={{ margin: '4px 0 0' }}>{t('cycle.sub')}</p>
+          <div className="grid2">
+            <div><label className="lbl">{t('cycle.day')}</label>
+              <input className="field" inputMode="numeric" value={cycle.day} disabled={cycle.menopause} onChange={(e) => setCycle({ ...cycle, day: e.target.value.replace(/\D/g, '') })} aria-label={t('cycle.day')} /></div>
+            <div><label className="lbl">{t('cycle.length')}</label>
+              <input className="field" inputMode="numeric" value={cycle.length} disabled={cycle.menopause} onChange={(e) => setCycle({ ...cycle, length: e.target.value.replace(/\D/g, '') })} /></div>
+          </div>
+          <label className="row mt8 small" style={{ cursor: 'pointer' }}>
+            <input type="checkbox" checked={cycle.menopause} onChange={(e) => setCycle({ ...cycle, menopause: e.target.checked })} />{t('cycle.menopause')}
+          </label>
+          <div className="small mt8">{phase ? <><b>{t('cycle.phase')}:</b> {t('phase.' + phase)}</> : <span className="muted">{t('cycle.needed')}</span>}</div>
+        </div>
+      )}
+      {anyAge && (
+        <div className="card mt16">
+          <label className="lbl" style={{ marginTop: 0 }}>{t('cycle.age')}</label>
+          <input className="field" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} aria-label={t('cycle.age')} />
+          <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('cycle.ageSub')}</p>
+        </div>
+      )}
+
+      <div className="dgrid">
       {rows.map((r, i) => {
         const m = byCode[r.code];
         const ev = r.value !== '' ? evaluate(r.value, r.low, r.high) : null;
@@ -146,7 +210,11 @@ export function CheckResults() {
             <div className="row">
               <select className="field grow" value={r.code} onChange={(e) => chooseMarker(i, e.target.value)} aria-label={t('check.marker')}>
                 <option value="">{t('check.pickMarker')}</option>
-                {MARKERS.map((mk) => <option key={mk.code} value={mk.code}>{markerName(mk.code, lang)}</option>)}
+                {GROUPS.map((g) => (
+                  <optgroup key={g} label={t('group.' + g)}>
+                    {MARKERS.filter((mk) => mk.group === g).map((mk) => <option key={mk.code} value={mk.code}>{markerName(mk.code, lang)}</option>)}
+                  </optgroup>
+                ))}
               </select>
               {ev && <StatusBadge status={ev.status} />}
             </div>
@@ -156,16 +224,20 @@ export function CheckResults() {
                 <select className="field" value={r.unit} onChange={(e) => chooseUnit(i, e.target.value)} disabled={!m} aria-label={t('check.unit')}>
                   {m ? Object.keys(m.units).map((u) => <option key={u} value={u}>{u}</option>) : <option value="">—</option>}
                 </select></div>
-              <div><label className="lbl">{t('check.low')}</label><input className="field" inputMode="decimal" value={r.low} onChange={(e) => setRow(i, { low: e.target.value.replace(',', '.') })} aria-label={t('check.low')} /></div>
-              <div><label className="lbl">{t('check.high')}</label><input className="field" inputMode="decimal" value={r.high} onChange={(e) => setRow(i, { high: e.target.value.replace(',', '.') })} aria-label={t('check.high')} /></div>
+              <div><label className="lbl">{t('check.low')}</label><input className="field" inputMode="decimal" value={r.low} onChange={(e) => editRange(i, 'low', e.target.value)} aria-label={t('check.low')} /></div>
+              <div><label className="lbl">{t('check.high')}</label><input className="field" inputMode="decimal" value={r.high} onChange={(e) => editRange(i, 'high', e.target.value)} aria-label={t('check.high')} /></div>
             </div>
-            {ev?.status === 'unknown' && <p className="tiny muted mt8">{t('check.noRange')}</p>}
+            {r.rangeSource && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('range.' + r.rangeSource)}</p>}
+            {m && isPhaseMarker(r.code) && !phase && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.needed')}</p>}
+            {m && needsAge(r.code) && !age && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.ageNeeded')}</p>}
+            {ev?.status === 'unknown' && !isPhaseMarker(r.code) && !needsAge(r.code) && <p className="tiny muted mt8">{t('check.noRange')}</p>}
           </div>
         );
       })}
+      </div>
       <button className="btn btn-link mt8" onClick={() => setRows([...rows, emptyRow()])}>+ {t('check.another')}</button>
       {err && <div className="error">{err}</div>}
-      <button className="btn btn-primary mt16" disabled={!valid || busy} onClick={save}>{t('check.save')}</button>
+      <button className="btn btn-primary mt16" disabled={!valid || busy || reading} onClick={save}>{t('check.save')}</button>
       <button className="btn btn-ghost mt8" onClick={() => nav(-1)}>{t('common.cancel')}</button>
     </Phone>
   );

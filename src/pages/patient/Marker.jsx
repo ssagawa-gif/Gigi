@@ -84,6 +84,8 @@ export default function Marker() {
       </div>
       <div className="tiny muted center">{[fmtDate(last.test_date), last.lab_name, last.country].filter(Boolean).join(' · ')}</div>
       {m?.loinc && <div className="tiny muted center" style={{ opacity: .7 }}>LOINC {m.loinc}</div>}
+      {last.context?.phase && <div className="tiny muted center">{t('marker.phaseInfo', { phase: t('phase.' + last.context.phase) })}</div>}
+      {last.context?.range_source && <div className="tiny muted center">{t('range.' + last.context.range_source)}</div>}
 
       <div className="card mt16">
         <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('marker.ref')}: {fmtNum(band[0])}–{fmtNum(band[1])} {last.canonical_unit}</span>}</div>

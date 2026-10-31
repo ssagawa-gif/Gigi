@@ -16,6 +16,12 @@ Open **`GiGi_demo.html`** by double-clicking it. It is a single file with no ins
 
 The source code lives in this repository. No health data is ever stored in the code.
 
+## Reading lab report PDFs
+When a patient uploads a PDF, `src/lib/pdfReader.js` reads its text in the browser (pdf.js, no AI, nothing is sent anywhere) and proposes every result it recognises: marker, value, unit and the lab's range. It also picks up the test date and the lab name. The patient checks the values and saves. Photos and scanned PDFs have no text layer, so for those the patient types the values.
+
+## GiGi standard reference ranges
+`src/lib/markers.js` holds 32 markers with GiGi standard ranges in US and SI units, taken from *Gigi_Reference_Ranges.pdf* (draft, 31 Oct 2026; to be validated by the clinical advisers). FSH, LH, oestradiol and progesterone use the range for the cycle phase, worked out from the day of the cycle (or menopause). AMH uses the range for the patient's age. The lab's own range is used when the report prints one; otherwise GiGi's standard applies. HOMA-IR, the Free Androgen Index and the LH:FSH ratio are calculated when their inputs share a test date.
+
 ## How results are evaluated
 1. The patient types (or checks) each value **exactly as printed on the report**: value, unit and the lab's reference range.
 2. **In range:** GiGi shows a plain-language explanation and no doctor is needed.

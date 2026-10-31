@@ -7,11 +7,14 @@ import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { latestPerMarker } from '../../lib/results.js';
-import { markerName } from '../../lib/markers.js';
+import { markerName, derivedResults } from '../../lib/markers.js';
 
 export function MarkerList({ results, onOpen, grid = true }) {
-  const { lang, fmtDate, fmtNum } = useI18n();
+  const { t, lang, fmtDate, fmtNum } = useI18n();
+  const seen = new Set();
+  const calc = derivedResults(results).filter((d) => !seen.has(d.code) && seen.add(d.code));
   return (
+    <>
     <div className={'stack' + (grid ? ' dgrid' : '')}>
       {latestPerMarker(results).map((r) => (
         <div key={r.id} className="card row between tap" onClick={() => onOpen(r.marker_code)}>
@@ -23,6 +26,21 @@ export function MarkerList({ results, onOpen, grid = true }) {
         </div>
       ))}
     </div>
+    {calc.length > 0 && (
+      <>
+        <h3 className="mt24" style={{ marginBottom: 4 }}>{t('record.calculated')}</h3>
+        <p className="tiny muted" style={{ marginTop: 0 }}>{t('record.calcNote')}</p>
+        <div className={'stack' + (grid ? ' dgrid' : '')}>
+          {calc.map((d) => (
+            <div key={d.code} className="card row between" data-testid="calc">
+              <div><div className="serif" style={{ fontSize: 19 }}>{markerName(d.code, lang)}</div><div className="tiny muted">{d.formula} · {fmtDate(d.test_date)}</div></div>
+              <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{fmtNum(d.value)}</b><div className="tiny muted">&lt; {fmtNum(d.high)}</div><div className="mt8"><StatusBadge status={d.status} /></div></div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+    </>
   );
 }
 
