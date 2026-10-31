@@ -26,3 +26,34 @@ console.log('ok',ok,'bad',bad.length); console.log(bad.join('\n')); console.log(
 // mid-cycle range and shows a "re-test on day 28" note instead of flagging low progesterone.
 const unexpected = bad.filter((b) => !b.startsWith('GG-33 progesterone'));
 if (unexpected.length) { console.error('Unexpected differences:', unexpected.length); process.exit(1); }
+
+// ---- situation + urgency (Expected App Output tab) ----
+const HORMONES = ['fsh', 'lh', 'estradiol', 'progesterone', 'prolactin', 'shbg'];
+const problems = [];
+for (const r of data.rows) {
+  const s = r.status.toLowerCase();
+  const sit = {
+    pill: /combined/i.test(r.contra || ''), breastfeeding: s.includes('breastfeeding'),
+    no_period: s.includes('amenorrhoea'), thyroid_med: /levothyroxine/i.test(r.meds || ''),
+  };
+  const post = s.includes('postmenop');
+  const day = +(s.match(/day[- ]?(\d+)/) || [])[1] || null;
+  const len = +(String(r.len).match(/^(\d+)/) || [])[1] || 28;
+  const phase = post ? 'post' : sit.pill ? 'early' : (day && M.phaseFromCycle(day, len)) || M.situationPhase(sit) || 'early';
+  const out = {};
+  for (const [col, code] of Object.entries(map)) {
+    const v = r.vals[col]; const unit = M.normalizeUnit(data.units[col], code);
+    const rg = M.standardRange(code, unit, { phase, age: r.age }) || [];
+    out[code] = M.assess({ code, value: v, unit, low: rg[0], high: rg[1], situation: sit });
+  }
+  // "should NOT alarm" on hormones
+  if (['GG-09', 'GG-14', 'GG-17', 'GG-26'].includes(r.id)) {
+    const alarms = HORMONES.filter((c) => out[c].needsReview);
+    if (alarms.length) problems.push(`${r.id} hormone alarms: ${alarms.join(', ')}`);
+  }
+  if (r.id === 'GG-21' && out.tsh.dose !== 'thyroid_med') problems.push('GG-21 no dose note on TSH');
+  const urgent = Object.entries(out).filter(([, a]) => a.urgency).map(([c, a]) => c + ':' + a.urgency);
+  if (r.id === 'GG-13' ? urgent.join() !== 'glucose:days,hba1c:days' : urgent.length) problems.push(`${r.id} urgency ${urgent.join() || 'none'}`);
+}
+console.log('situation/urgency problems', problems.length); problems.forEach((p) => console.log('  ', p));
+if (problems.length) process.exit(1);

@@ -15,7 +15,7 @@ export default function PatientSummary({ patient = {}, results = [], appts = [],
   const last = past[past.length - 1];
   const next = mine.find((a) => new Date(a.starts_at).getTime() > now);
   const complaint = (next?.note || last?.note || [...reviews].reverse().find((r) => r.note)?.note || '').trim();
-  const flagged = latestPerMarker(results).filter((r) => r.status === 'low' || r.status === 'high');
+  const flagged = latestPerMarker(results).filter((r) => (r.status === 'low' || r.status === 'high') && !r.context?.expected);
   const open = reviews.filter((r) => r.status === 'open');
 
   const Row = ({ icon, label, children }) => (

@@ -4,14 +4,14 @@ import Icon from '../../components/Icon.jsx';
 import Logo from '../../components/Logo.jsx';
 import TrendChart from '../../components/TrendChart.jsx';
 import Compare from '../../components/Compare.jsx';
-import { StatusBadge, Loading, Empty, Bell, LangPicker } from '../../components/ui.jsx';
+import { StatusBadge, UrgentBadge, Loading, Empty, Bell, LangPicker } from '../../components/ui.jsx';
 import { MarkerList } from '../patient/Record.jsx';
 import PatientSummary from '../../components/PatientSummary.jsx';
 import { NotificationsList } from '../patient/More.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api, IS_DEMO } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
-import { markerName } from '../../lib/markers.js';
+import { markerName, SITUATIONS } from '../../lib/markers.js';
 import { byMarker } from '../../lib/results.js';
 
 export function DoctorShell({ children, title, actions }) {
@@ -72,7 +72,8 @@ export function Queue() {
   const nav = useNavigate();
   const { data, loading } = useData(() => api.listDoctorQueue(), []);
   const [filter, setFilter] = useState('open');
-  const list = (data || []).filter((r) => filter === 'all' || r.status === filter);
+  const rank = (r) => (r.status === 'open' ? ({ today: 0, days: 1 }[r.urgency] ?? 2) : 3);
+  const list = (data || []).filter((r) => filter === 'all' || r.status === filter).sort((a, b) => rank(a) - rank(b));
   const selected = (data || []).find((r) => r.id === id) || (!id && list[0]) || null;
 
   return (
@@ -87,7 +88,7 @@ export function Queue() {
               {list.map((r) => (
                 <div key={r.id} className={'card queue-item' + (selected?.id === r.id ? ' on' : '')} onClick={() => nav(`/doctor/queue/${r.id}`)}>
                   <div className="row between"><b>{r.patient?.full_name || '—'}</b><span className={'badge ' + (r.status === 'open' ? 'cherry' : 'normal')}>{t('doc.status.' + r.status)}</span></div>
-                  <div className="small mt8">{markerName(r.marker_code, lang)}</div>
+                  <div className="small mt8">{markerName(r.marker_code, lang)} <UrgentBadge level={r.urgency} /></div>
                   <div className="tiny muted">{fmtDate(r.created_at)}</div>
                 </div>
               ))}
@@ -97,6 +98,22 @@ export function Queue() {
         <div>{selected ? <CaseView review={selected} key={selected.id} /> : !loading && <Empty>{t('doc.queue.pick')}</Empty>}</div>
       </div>
     </DoctorShell>
+  );
+}
+
+/** What the patient ticked and wrote about her situation on the test day. */
+function SituationNote({ ctx }) {
+  const { t } = useI18n();
+  const sit = ctx?.situation;
+  if (!sit) return null;
+  const ticked = SITUATIONS.filter((k) => sit[k]);
+  if (!ticked.length && !sit.notes) return null;
+  return (
+    <div className="card-tan small mt8" data-testid="situation-note">
+      <b>{t('situation.doc')}</b>
+      {!!ticked.length && <div className="chips mt8">{ticked.map((k) => <span key={k} className="chip">{t('situation.' + k)}</span>)}</div>}
+      {sit.notes && <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>“{sit.notes}”</p>}
+    </div>
   );
 }
 
@@ -151,9 +168,13 @@ function CaseView({ review }) {
         <div className="card">
           <div className="row between">
             <div><h3>{markerName(review.marker_code, lang)}</h3><div className="tiny muted">{[fmtDate(last.test_date), last.lab_name, last.country].filter(Boolean).join(' · ')}</div></div>
-            <div className="row"><b style={{ fontSize: 20 }}>{fmtNum(last.value)} {last.unit}</b><StatusBadge status={last.status} /></div>
+            <div className="row"><b style={{ fontSize: 20 }}>{fmtNum(last.value)} {last.unit}</b><StatusBadge status={last.status} ctx={last.context} /></div>
           </div>
           <div className="tiny muted mt8">{t('marker.ref')}: {fmtNum(last.ref_low)}–{fmtNum(last.ref_high)} {last.unit}</div>
+          {last.context?.urgency && <div className="urgent-box mt8 small"><b>{t('urgent.doc.' + last.context.urgency)}</b></div>}
+          {last.context?.expected && <div className="tiny muted mt8">{t('situation.expectedWhy.' + last.context.expected)}</div>}
+          {last.context?.dose && <div className="tiny mt8" style={{ color: 'var(--cherry)' }}>{t('situation.dose')}</div>}
+          <SituationNote ctx={last.context} />
           <div className="mt8" style={{ maxWidth: 560 }}><TrendChart points={list.map((r) => ({ date: r.test_date, value: r.value_canonical, country: r.country, lab: r.lab_name }))} band={band} unit={last.canonical_unit} /></div>
         </div>
       ) : <Empty>{t('doc.noAccess')}</Empty>}
@@ -163,7 +184,7 @@ function CaseView({ review }) {
           <h3>{t('doc.otherMarkers')}</h3>
           <table className="cmp mt8"><tbody>
             {Object.entries(byMarker(results)).map(([code, l]) => { const r = l[l.length - 1]; return (
-              <tr key={code}><td>{markerName(code, lang)}</td><td>{fmtNum(r.value)} {r.unit}</td><td className="muted">{fmtDate(r.test_date)}</td><td><StatusBadge status={r.status} /></td></tr>
+              <tr key={code}><td>{markerName(code, lang)}</td><td>{fmtNum(r.value)} {r.unit}</td><td className="muted">{fmtDate(r.test_date)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
             ); })}
           </tbody></table>
         </div>

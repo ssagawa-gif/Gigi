@@ -46,7 +46,7 @@ export default function Compare({ results }) {
               const pct = A && B && A.value_canonical ? Math.round((d / A.value_canonical) * 100) : null;
               return (
                 <tr key={code}>
-                  <td><div style={{ fontWeight: 500 }}>{markerName(code, lang)}</div>{B && <StatusBadge status={B.status} />}</td>
+                  <td><div style={{ fontWeight: 500 }}>{markerName(code, lang)}</div>{B && <StatusBadge status={B.status} ctx={B.context} />}</td>
                   <td>{show(A)}</td>
                   <td>{show(B)}</td>
                   <td className={d > 0 ? 'up' : d < 0 ? 'down' : ''}>{d == null ? '—' : `${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${pct != null ? Math.abs(pct) + '%' : ''}`}</td>

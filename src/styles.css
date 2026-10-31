@@ -91,6 +91,8 @@ h3 { font-size: 19px; }
 .badge.normal { background: var(--ok-bg); color: var(--ok-ink); }
 .badge.neutral { background: var(--field); color: var(--muted); }
 .badge.cherry { background: var(--cherry); color: #fff; }
+.badge.urgent { background: #C62828; color: #fff; font-weight: 600; margin-left: 4px; }
+.urgent-box { background: #FDECEA; border: 1px solid #C62828; color: #7A1414; border-radius: var(--r-md); padding: 14px 16px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { border: 1px solid var(--line); background: var(--card); border-radius: var(--r-pill); padding: 7px 13px; font-size: 13px; color: var(--ink); }
 .chip.on { background: var(--cherry); color: #fff; border-color: var(--cherry); }

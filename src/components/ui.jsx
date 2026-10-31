@@ -136,10 +136,25 @@ export function BottomNav() {
   );
 }
 
-export function StatusBadge({ status }) {
+export function StatusBadge({ status, ctx }) {
   const { t } = useI18n();
   if (!status) return null;
-  return <span className={'badge ' + (status === 'unknown' ? 'neutral' : status)}>{t('status.' + status)}</span>;
+  const expected = ctx?.expected && (status === 'low' || status === 'high');
+  return (
+    <>
+      <span className={'badge ' + (expected || status === 'unknown' ? 'neutral' : status)} title={expected ? t('situation.expectedWhy.' + ctx.expected) : undefined}>
+        {expected ? t('status.expected') : t('status.' + status)}
+      </span>
+      {ctx?.urgency && <UrgentBadge level={ctx.urgency} />}
+    </>
+  );
+}
+
+/** Red seal for results that need a doctor soon. */
+export function UrgentBadge({ level }) {
+  const { t } = useI18n();
+  if (!level) return null;
+  return <span className="badge urgent" data-testid="urgent" title={t('urgent.' + level)}>{t('urgent.badge')}</span>;
 }
 
 export function Initials({ name = '', className = 'avatar' }) {

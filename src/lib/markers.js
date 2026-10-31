@@ -343,9 +343,62 @@ export function evaluate(value, low, high) {
 
 const num = (x) => (x === '' || x == null ? null : Number(x));
 
+// ---------- the woman's situation on the test day ----------
+// Effects taken from the team's mock panels ("Expected App Output"): values pushed this way by the
+// situation are shown as "expected" and do not ask for a doctor review on their own.
+export const SITUATIONS = ['pill', 'breastfeeding', 'no_period', 'thyroid_med'];
+const EXPECTED = {
+  pill: { fsh: 'low', lh: 'low', estradiol: 'low', progesterone: 'low', shbg: 'high' },          // GG-14
+  breastfeeding: { prolactin: 'high', fsh: 'low', lh: 'low', estradiol: 'low' },                 // GG-26
+};
+// With thyroid tablets an out-of-range TSH / free T4 / free T3 is still flagged, with a "dose review" note (GG-21).
+const DOSE_NOTE = { thyroid_med: ['tsh', 'free_t4', 'free_t3'] };
+/** Women on the combined pill or without periods are compared with early-follicular ranges. */
+export const situationPhase = (sit = {}) => (sit.pill || sit.breastfeeding || sit.no_period ? 'early' : null);
+/** Which ticked situation explains this out-of-range value, if any. */
+export function expectedBecause(code, status, sit = {}) {
+  if (status !== 'low' && status !== 'high') return null;
+  return Object.keys(EXPECTED).find((k) => sit?.[k] && EXPECTED[k][code] === status) || null;
+}
+export function doseNote(code, status, sit = {}) {
+  return (status === 'low' || status === 'high') && Object.keys(DOSE_NOTE).some((k) => sit?.[k] && DOSE_NOTE[k].includes(code)) ? 'thyroid_med' : null;
+}
+
+// ---------- urgency ----------
+// Red "urgent" seal. Only limits written in GiGi's own documents are here (mock panels: fasting
+// glucose >= 126 mg/dL and HbA1c >= 6.5 % = diabetes range, GG-13 "urgent within days").
+// The clinical advisers add the rest (e.g. the same-day limits for haemoglobin) in this table.
+// Values are in the canonical unit of each marker. level: 'today' (same day) or 'days'.
+export const URGENT = [
+  { code: 'glucose', op: '>=', value: 126, level: 'days' },
+  { code: 'hba1c', op: '>=', value: 6.5, level: 'days' },
+];
+export function urgencyOf(code, valueCanonical) {
+  const v = Number(valueCanonical);
+  if (valueCanonical == null || isNaN(v)) return null;
+  const hits = URGENT.filter((u) => u.code === code && (u.op === '>=' ? v >= u.value : u.op === '>' ? v > u.value : u.op === '<=' ? v <= u.value : v < u.value));
+  return hits.some((h) => h.level === 'today') ? 'today' : hits.length ? 'days' : null;
+}
+
+/** Status + review need + why, for one value in one situation. */
+export function assess({ code, value, unit, low, high, situation = {} }) {
+  const ev = evaluate(value, low, high);
+  const expected = expectedBecause(code, ev.status, situation);
+  const urgency = urgencyOf(code, toCanonical(code, value, unit));
+  return {
+    ...ev,
+    needsReview: urgency ? true : expected ? false : ev.needsReview,
+    expected,
+    dose: doseNote(code, ev.status, situation),
+    urgency,
+  };
+}
+
 /** Build a full result record ready to store. */
 export function buildResult({ code, value, unit, low, high, date, lab, country, context = null }) {
-  const { status, needsReview } = evaluate(value, low, high);
+  const a = assess({ code, value, unit, low, high, situation: context?.situation });
+  const { status, needsReview } = a;
+  if (a.expected || a.dose || a.urgency) context = { ...(context || {}), ...(a.expected ? { expected: a.expected } : {}), ...(a.dose ? { dose: a.dose } : {}), ...(a.urgency ? { urgency: a.urgency } : {}) };
   return {
     marker_code: code,
     loinc: byCode[code]?.loinc || null,

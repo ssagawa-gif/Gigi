@@ -21,7 +21,7 @@ export function MarkerList({ results, onOpen, grid = true }) {
           <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)}</div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div></div>
           <div style={{ textAlign: 'right' }}>
             <div><b style={{ fontSize: 18 }}>{fmtNum(r.value)}</b> <span className="tiny muted">{r.unit}</span></div>
-            <div className="mt8"><StatusBadge status={r.status} /></div>
+            <div className="mt8"><StatusBadge status={r.status} ctx={r.context} /></div>
           </div>
         </div>
       ))}
@@ -34,7 +34,7 @@ export function MarkerList({ results, onOpen, grid = true }) {
           {calc.map((d) => (
             <div key={d.code} className="card row between" data-testid="calc">
               <div><div className="serif" style={{ fontSize: 19 }}>{markerName(d.code, lang)}</div><div className="tiny muted">{d.formula} · {fmtDate(d.test_date)}</div></div>
-              <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{fmtNum(d.value)}</b><div className="tiny muted">&lt; {fmtNum(d.high)}</div><div className="mt8"><StatusBadge status={d.status} /></div></div>
+              <div style={{ textAlign: 'right' }}><b style={{ fontSize: 18 }}>{fmtNum(d.value)}</b><div className="tiny muted">&lt; {fmtNum(d.high)}</div><div className="mt8"><StatusBadge status={d.status} ctx={d.context} /></div></div>
             </div>
           ))}
         </div>

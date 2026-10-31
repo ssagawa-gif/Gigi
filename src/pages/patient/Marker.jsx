@@ -80,12 +80,17 @@ export default function Marker() {
       <TopBar />
       <h1 className="center">{markerName(code, lang)}</h1>
       <div className="row mt8" style={{ justifyContent: 'center' }}>
-        <span className="serif" style={{ fontSize: 26 }}>{fmtNum(last.value)} {last.unit}</span><StatusBadge status={last.status} />
+        <span className="serif" style={{ fontSize: 26 }}>{fmtNum(last.value)} {last.unit}</span><StatusBadge status={last.status} ctx={last.context} />
       </div>
       <div className="tiny muted center">{[fmtDate(last.test_date), last.lab_name, last.country].filter(Boolean).join(' · ')}</div>
       {m?.loinc && <div className="tiny muted center" style={{ opacity: .7 }}>LOINC {m.loinc}</div>}
       {last.context?.phase && <div className="tiny muted center">{t('marker.phaseInfo', { phase: t('phase.' + last.context.phase) })}</div>}
       {last.context?.range_source && <div className="tiny muted center">{t('range.' + last.context.range_source)}</div>}
+      {last.context?.urgency && (
+        <div className="urgent-box mt16 small" data-testid="urgent-box"><b>{t('urgent.title.' + last.context.urgency)}</b><div>{t('urgent.sub')}</div></div>
+      )}
+      {last.context?.expected && <div className="card-tan small mt16">{t('situation.expectedWhy.' + last.context.expected)}</div>}
+      {last.context?.dose && <div className="card-tan small mt16">{t('situation.dose')}</div>}
 
       <div className="card mt16">
         <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('marker.ref')}: {fmtNum(band[0])}–{fmtNum(band[1])} {last.canonical_unit}</span>}</div>
@@ -97,7 +102,7 @@ export default function Marker() {
             <thead><tr><th>{t('check.date')}</th><th>{t('marker.printed')}</th><th>{last.canonical_unit}</th><th /></tr></thead>
             <tbody>{[...list].reverse().map((r) => (
               <tr key={r.id}><td>{fmtDate(r.test_date)}<div className="tiny muted">{[r.lab_name, r.country].filter(Boolean).join(' · ')}</div></td>
-                <td>{fmtNum(r.value)} {r.unit}</td><td>{fmtNum(r.value_canonical)}</td><td><StatusBadge status={r.status} /></td></tr>
+                <td>{fmtNum(r.value)} {r.unit}</td><td>{fmtNum(r.value_canonical)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
             ))}</tbody>
           </table>
         )}
@@ -152,7 +157,7 @@ export function RequestReview() {
 
   async function send() {
     setBusy(true);
-    await api.requestReview({ doctor_id: doctor, marker_code: code, result_ids: list.map((r) => r.id), note });
+    await api.requestReview({ doctor_id: doctor, marker_code: code, result_ids: list.map((r) => r.id), note, urgency: last?.context?.urgency || null });
     showToast(t('review.sent'));
     nav(`/marker/${code}`, { replace: true });
   }
@@ -162,7 +167,7 @@ export function RequestReview() {
       <TopBar title={t('review.title')} />
       <div className="card row between">
         <div><div className="serif" style={{ fontSize: 19 }}>{markerName(code, lang)}</div><div className="tiny muted">{t('review.history', { n: list.length })}</div></div>
-        {last && <div><b>{fmtNum(last.value)}</b> <span className="tiny muted">{last.unit}</span> <StatusBadge status={last.status} /></div>}
+        {last && <div><b>{fmtNum(last.value)}</b> <span className="tiny muted">{last.unit}</span> <StatusBadge status={last.status} ctx={last.context} /></div>}
       </div>
       <label className="lbl">{t('review.choose')}</label>
       <div className="stack">

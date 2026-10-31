@@ -121,13 +121,13 @@ export function makeSupabaseBackend(url, anonKey) {
     async addResults(rows) { const saved = ok(await sb.from('results').insert(rows).select()); fire(); return saved; },
     async deleteResult(id) { ok(await sb.from('results').delete().eq('id', id)); fire(); },
 
-    async requestReview({ doctor_id, marker_code, result_ids, note, share_days = 30 }) {
+    async requestReview({ doctor_id, marker_code, result_ids, note, urgency = null, share_days = 30 }) {
       const me = await uidOf();
       const active = ok(await sb.from('shares').select('id').eq('patient_id', me).eq('doctor_id', doctor_id).is('revoked_at', null).gt('expires_at', new Date().toISOString()));
       if (!active.length) {
         ok(await sb.from('shares').insert({ doctor_id, scopes: ['bloodwork'], expires_at: new Date(Date.now() + share_days * 864e5).toISOString() }));
       }
-      const rev = ok(await sb.from('review_requests').insert({ doctor_id, marker_code, result_ids, note }).select().single());
+      const rev = ok(await sb.from('review_requests').insert({ doctor_id, marker_code, result_ids, note, ...(urgency ? { urgency } : {}) }).select().single());
       fire(); return rev;
     },
     async listMyReviews() {

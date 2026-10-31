@@ -139,15 +139,15 @@ export const demoBackend = {
   },
 
   // ---------- reviews (the "chamado" to the doctor) ----------
-  async requestReview({ doctor_id, marker_code, result_ids, note, share_days = 30 }) {
+  async requestReview({ doctor_id, marker_code, result_ids, note, urgency = null, share_days = 30 }) {
     const db = load(); const id = requireMe();
     const me = db.profiles.find((p) => p.id === id);
-    const rev = { id: 'rev-' + uid(), patient_id: id, doctor_id, marker_code, result_ids, note, status: 'open', created_at: nowIso(), answered_at: null, response: null, recommendation: null, trust_rating: null };
+    const rev = { id: 'rev-' + uid(), patient_id: id, doctor_id, marker_code, result_ids, note, urgency, status: 'open', created_at: nowIso(), answered_at: null, response: null, recommendation: null, trust_rating: null };
     db.reviews.push(rev);
     if (!activeShare(db, id, doctor_id)) {
       db.shares.push({ id: 'sh-' + uid(), patient_id: id, doctor_id, scopes: ['bloodwork'], created_at: nowIso(), expires_at: new Date(Date.now() + share_days * 864e5).toISOString(), revoked_at: null });
     }
-    notify(db, doctor_id, 'review_requested', { patient_name: me?.full_name, marker_code }, `/doctor/queue/${rev.id}`);
+    notify(db, doctor_id, 'review_requested', { patient_name: me?.full_name, marker_code, urgency }, `/doctor/queue/${rev.id}`);
     save(db); return rev;
   },
   async listMyReviews() { const db = load(); const id = requireMe(); return db.reviews.filter((r) => r.patient_id === id).map((r) => ({ ...r, doctor: doctorView(db, db.doctors.find((d) => d.id === r.doctor_id) || { id: r.doctor_id }) })); },

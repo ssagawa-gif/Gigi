@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
-import { MARKERS, byCode, evaluate, buildResult, markerName, standardRange, phaseFromCycle, progesteroneTiming, isPhaseMarker, needsAge } from '../../lib/markers.js';
+import { MARKERS, byCode, assess, buildResult, SITUATIONS, situationPhase, markerName, standardRange, phaseFromCycle, progesteroneTiming, isPhaseMarker, needsAge } from '../../lib/markers.js';
 import { readLabPdf } from '../../lib/pdfReader.js';
 
 export const COUNTRIES = ['ES', 'BR', 'PT', 'FR', 'IT', 'DE', 'GB', 'IE', 'NL', 'CH', 'US', 'CA', 'MX', 'AR', 'CL', 'CO', 'PE', 'UY'];
@@ -86,13 +86,15 @@ export function CheckResults() {
   const [ctx, setCtx] = useState({ lab: '', country: session?.profile?.country || 'ES', date: new Date().toISOString().slice(0, 10) });
   const [cycle, setCycle] = useState({ day: '', length: 28, menopause: false });
   const [age, setAge] = useState('');
+  const [sit, setSit] = useState({ pill: false, breastfeeding: false, no_period: false, thyroid_med: false, notes: '' });
   const [rows, setRows] = useState([emptyRow()]);
   const [reading, setReading] = useState(!!file && /pdf$/i.test(file.type || file.name));
   const [readInfo, setReadInfo] = useState(null);   // { found, textFound }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  const phase = phaseFromCycle(cycle.day, cycle.length, cycle.menopause);
+  // The pill, breastfeeding or no periods: compared with early-follicular ranges (team's reference sheet)
+  const phase = cycle.menopause ? 'post' : sit.pill ? 'early' : phaseFromCycle(cycle.day, cycle.length) || situationPhase(sit);
   const opts = { phase, age };
   const progTiming = phase && phase !== 'early' ? progesteroneTiming(cycle.day, cycle.length, cycle.menopause) : null;
   const withStd = (r, o = opts) => {
@@ -136,12 +138,13 @@ export function CheckResults() {
     setBusy(true); setErr('');
     try {
       const report = await api.addReport({ file, lab_name: ctx.lab, country: ctx.country, test_date: ctx.date });
+      const situationToSave = Object.fromEntries(Object.entries({ ...sit, notes: sit.notes.trim() }).filter(([, v]) => v));
       const built = rows.map((r) => ({
         ...buildResult({ code: r.code, value: r.value, unit: r.unit, low: r.low, high: r.high, date: ctx.date, lab: ctx.lab, country: ctx.country,
-          context: { range_source: r.rangeSource || 'manual', ...(isPhaseMarker(r.code) ? { phase, cycle_day: cycle.day || null, cycle_length: cycle.length, menopause: cycle.menopause } : {}), ...(needsAge(r.code) ? { age: age || null } : {}) } }),
+          context: { range_source: r.rangeSource || 'manual', situation: situationToSave, ...(isPhaseMarker(r.code) ? { phase, cycle_day: cycle.day || null, cycle_length: cycle.length, menopause: cycle.menopause } : {}), ...(needsAge(r.code) ? { age: age || null } : {}) } }),
         report_id: report.id }));
       await api.addResults(built);
-      const flagged = built.find((r) => r.needs_review);
+      const flagged = built.find((r) => r.context?.urgency === 'today') || built.find((r) => r.context?.urgency) || built.find((r) => r.needs_review);
       showToast(t('check.saved'));
       nav(flagged ? `/marker/${flagged.marker_code}` : '/record', { replace: true });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -198,10 +201,25 @@ export function CheckResults() {
         </div>
       )}
 
+      <div className="card mt16" data-testid="situation">
+        <div style={{ fontWeight: 600 }}>{t('situation.title')}</div>
+        <p className="tiny muted" style={{ margin: '4px 0 0' }}>{t('situation.sub')}</p>
+        <div className="stack mt8" style={{ gap: 6 }}>
+          {SITUATIONS.map((k) => (
+            <label key={k} className="row small" style={{ cursor: 'pointer' }}>
+              <input type="checkbox" checked={sit[k]} onChange={(e) => setSit({ ...sit, [k]: e.target.checked })} />{t('situation.' + k)}
+            </label>
+          ))}
+        </div>
+        <label className="lbl">{t('situation.notes')}</label>
+        <textarea className="field" rows={3} value={sit.notes} onChange={(e) => setSit({ ...sit, notes: e.target.value })} placeholder={t('situation.notesPh')} aria-label={t('situation.notes')} />
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('situation.notesSub')}</p>
+      </div>
+
       <div className="dgrid">
       {rows.map((r, i) => {
         const m = byCode[r.code];
-        const ev = r.value !== '' ? evaluate(r.value, r.low, r.high) : null;
+        const ev = r.value !== '' && r.code && r.unit ? assess({ code: r.code, value: r.value, unit: r.unit, low: r.low, high: r.high, situation: sit }) : null;
         return (
           <div key={i} className="card mt16" data-testid="result-row">
             <div className="row between">
@@ -217,7 +235,7 @@ export function CheckResults() {
                   </optgroup>
                 ))}
               </select>
-              {ev && <StatusBadge status={ev.status} />}
+              {ev && <StatusBadge status={ev.status} ctx={ev} />}
             </div>
             <div className="grid2">
               <div><label className="lbl">{t('check.value')}</label><input className="field" inputMode="decimal" value={r.value} onChange={(e) => setRow(i, { value: e.target.value.replace(',', '.') })} aria-label={t('check.value')} /></div>
@@ -230,6 +248,9 @@ export function CheckResults() {
             </div>
             {r.rangeSource && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('range.' + r.rangeSource)}</p>}
             {m && isPhaseMarker(r.code) && !phase && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.needed')}</p>}
+            {ev?.urgency && <p className="tiny" style={{ margin: '8px 0 0', color: '#C62828', fontWeight: 600 }}>{t('urgent.' + ev.urgency)}</p>}
+            {ev?.expected && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('situation.expectedWhy.' + ev.expected)}</p>}
+            {ev?.dose && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('situation.dose')}</p>}
             {r.code === 'progesterone' && progTiming && <p className="tiny" data-testid="prog-timing" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.progTiming', progTiming)}</p>}
             {m && needsAge(r.code) && !age && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.ageNeeded')}</p>}
             {ev?.status === 'unknown' && !isPhaseMarker(r.code) && !needsAge(r.code) && <p className="tiny muted mt8">{t('check.noRange')}</p>}
