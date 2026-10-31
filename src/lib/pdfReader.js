@@ -133,7 +133,8 @@ function findDate(lines) {
       for (const p of pats) {
         const m = p.re.exec(l);
         if (!m) continue;
-        const [y, mo, d] = p.f(m).map(Number);
+        let [y, mo, d] = p.f(m).map(Number);
+        if (p.mdy !== false && mo > 12 && d <= 12) [mo, d] = [d, mo]; // US style: 10/14/2026
         if (!mo || mo > 12 || d > 31 || y < 1990 || y > new Date().getFullYear() + 1) continue;
         return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       }

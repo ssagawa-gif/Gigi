@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:html": "vite build --mode single"
+    "build:html": "vite build --mode single",
+    "test:ranges": "node tests/mock-panels.mjs"
   },
   "author": "",
   "license": "ISC",

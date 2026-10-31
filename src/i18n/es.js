@@ -270,6 +270,7 @@ export default {
   'cycle.needed': 'Indica el día del ciclo para valorar esta hormona.',
   'cycle.age': 'Tu edad el día del análisis',
   'cycle.ageSub': 'El rango de la AMH cambia con la edad.',
+  'cycle.progTiming': "La progesterona muestra la ovulación mejor unos 7 días antes de la próxima regla — hacia el día {best} en un ciclo de {length} días. En el día {day} este resultado no confirma ni descarta la ovulación; considera repetir el análisis el día {best}.",
   'cycle.ageNeeded': 'Indica tu edad para valorar la AMH.',
   'phase.early': 'Folicular temprana (días 2–5)',
   'phase.mid': 'Mitad del ciclo (ovulación)',

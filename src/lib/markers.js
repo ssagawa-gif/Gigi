@@ -221,7 +221,8 @@ export function matchMarker(text) {
     if (m.exclude?.some((x) => t.includes(normText(x)))) continue;
     for (const syn of m.synonyms) {
       const s = normText(syn);
-      const re = new RegExp(`(^|[^a-z0-9])${esc(s)}(?=$|[^a-z0-9])`);
+      // a space or a hyphen in a name matches either ("DHEA sulfato" = "DHEA-Sulfato")
+      const re = new RegExp(`(^|[^a-z0-9])${esc(s).replace(/[- ]/g, '[ -]')}(?=$|[^a-z0-9])`);
       const hit = re.exec(t);
       if (hit && (!best || s.length > best.len)) best = { marker: m, len: s.length, index: hit.index + hit[1].length };
     }
@@ -284,17 +285,38 @@ export function phaseFromCycle(day, length = 28, menopause = false) {
   return 'early';
 }
 
+/**
+ * Progesterone shows ovulation only when taken about 7 days before the next period
+ * (day 21 of a 28-day cycle). Returns the best day when the test day is more than 2 days off.
+ */
+export function progesteroneTiming(day, length = 28, menopause = false) {
+  const d = Number(day), L = Number(length) || 28;
+  if (menopause || !d) return null;
+  const best = L - 7;
+  return Math.abs(d - best) > 2 ? { best, day: d, length: L } : null;
+}
+
 /** GiGi standard range for a marker in a given unit (and phase / age when they matter). */
 export function standardRange(code, unit, { phase, age } = {}) {
   const m = byCode[code];
   if (!m || !unit) return null;
   if (m.phaseRanges) {
     if (!phase) return null;
-    const pr = m.phaseRanges[phase];
-    if (pr?.[unit]) return pr[unit];
-    // same unit family with factor 1 (IU/L = mIU/mL)
-    const canon = Object.keys(pr || {}).find((u) => m.units[u] === 1 && m.units[unit] === 1);
-    return canon ? pr[canon] : null;
+    const pick = (ph) => {
+      const pr = m.phaseRanges[ph];
+      if (pr?.[unit]) return pr[unit];
+      // same unit family with factor 1 (IU/L = mIU/mL)
+      const canon = Object.keys(pr || {}).find((u) => m.units[u] === 1 && m.units[unit] === 1);
+      return canon ? pr[canon] : null;
+    };
+    const r = pick(phase);
+    // Around ovulation the hormone surge lasts only a day or two: a value still at follicular
+    // level is expected, so the low limit there is the lower of the early and mid-cycle limits.
+    if (phase === 'mid' && r) {
+      const e = pick('early');
+      if (e && e[0] != null && r[0] != null && e[0] < r[0]) return [e[0], r[1]];
+    }
+    return r;
   }
   if (m.ageRanges) {
     if (age == null || age === '') return null;

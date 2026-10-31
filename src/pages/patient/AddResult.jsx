@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
-import { MARKERS, byCode, evaluate, buildResult, markerName, standardRange, phaseFromCycle, isPhaseMarker, needsAge } from '../../lib/markers.js';
+import { MARKERS, byCode, evaluate, buildResult, markerName, standardRange, phaseFromCycle, progesteroneTiming, isPhaseMarker, needsAge } from '../../lib/markers.js';
 import { readLabPdf } from '../../lib/pdfReader.js';
 
 export const COUNTRIES = ['ES', 'BR', 'PT', 'FR', 'IT', 'DE', 'GB', 'IE', 'NL', 'CH', 'US', 'CA', 'MX', 'AR', 'CL', 'CO', 'PE', 'UY'];
@@ -94,6 +94,7 @@ export function CheckResults() {
 
   const phase = phaseFromCycle(cycle.day, cycle.length, cycle.menopause);
   const opts = { phase, age };
+  const progTiming = phase && phase !== 'early' ? progesteroneTiming(cycle.day, cycle.length, cycle.menopause) : null;
   const withStd = (r, o = opts) => {
     if (!r.code || !r.unit || r.rangeSource === 'lab' || r.rangeSource === 'manual') return r;
     const std = standardRange(r.code, r.unit, o);
@@ -229,6 +230,7 @@ export function CheckResults() {
             </div>
             {r.rangeSource && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('range.' + r.rangeSource)}</p>}
             {m && isPhaseMarker(r.code) && !phase && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.needed')}</p>}
+            {r.code === 'progesterone' && progTiming && <p className="tiny" data-testid="prog-timing" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.progTiming', progTiming)}</p>}
             {m && needsAge(r.code) && !age && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.ageNeeded')}</p>}
             {ev?.status === 'unknown' && !isPhaseMarker(r.code) && !needsAge(r.code) && <p className="tiny muted mt8">{t('check.noRange')}</p>}
           </div>

@@ -270,6 +270,7 @@ export default {
   'cycle.needed': 'Tell us the day of your cycle to check this hormone.',
   'cycle.age': 'Your age on the test day',
   'cycle.ageSub': 'AMH ranges change with age.',
+  'cycle.progTiming': "Progesterone shows ovulation best about 7 days before your next period — around day {best} of a {length}-day cycle. On day {day} this result can't confirm or rule out ovulation; consider re-testing on day {best}.",
   'cycle.ageNeeded': 'Tell us your age to check AMH.',
   'phase.early': 'Early follicular (days 2–5)',
   'phase.mid': 'Mid-cycle (ovulation)',
