@@ -82,6 +82,11 @@ export default {
 
   'marker.trend': 'Trend ({n} results)', 'marker.ref': 'Ref', 'marker.converted': 'All results shown in {unit} so they can be compared.',
   'marker.all': 'See all results', 'marker.hide': 'Hide results', 'marker.printed': 'As printed',
+  'info.whatIs': "What is {marker}?",
+  'info.why.high': "Why {marker} can be high",
+  'info.why.low': "Why {marker} can be low",
+  'info.whyBoth': "What can make {marker} high or low",
+  'info.common': "These are common reasons, not a diagnosis. Only a doctor who knows your history can tell what applies to you.",
   'marker.whatMeans': 'What it means',
   'marker.inRange': 'Your latest value is within the reference range. No doctor review is needed for this result.',
   'marker.outRange.low': 'Your latest value is below the reference range.',
@@ -147,11 +152,6 @@ export default {
 
   'rec.recheck': 'Recheck in about 3 months', 'rec.visit': 'Book a results visit', 'rec.tests': 'More tests needed', 'rec.none': 'No action needed',
 
-  'about.ferritin': 'Ferritin shows how much iron your body has stored. Stores can run low before haemoglobin changes.',
-  'about.haemoglobin': 'Haemoglobin carries oxygen in your red blood cells. A low value is one sign of anaemia.',
-  'about.vitamin_d': 'Vitamin D supports bones, immunity and hormone balance. Low levels are common in winter and often linked to tiredness.',
-  'about.tsh': 'TSH is the signal from the brain to the thyroid. It is usually the first test of thyroid function.',
-  'about.generic': 'Your doctor can explain what this marker means for you.',
 
   'doc.console': 'Clinician console',
   'doc.nav.queue': 'Review queue', 'doc.nav.agenda': 'Agenda', 'doc.nav.patients': 'Patients', 'doc.nav.notifications': 'Notifications', 'doc.nav.profile': 'My profile',

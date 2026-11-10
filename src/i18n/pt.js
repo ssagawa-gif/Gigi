@@ -82,6 +82,11 @@ export default {
 
   'marker.trend': 'Evolução ({n} resultados)', 'marker.ref': 'Ref', 'marker.converted': 'Todos os resultados em {unit} para poderem ser comparados.',
   'marker.all': 'Ver todos os resultados', 'marker.hide': 'Esconder resultados', 'marker.printed': 'Como no laudo',
+  'info.whatIs': "O que é {marker}?",
+  'info.why.high': "Por que {marker} pode estar alto",
+  'info.why.low': "Por que {marker} pode estar baixo",
+  'info.whyBoth': "O que pode deixar {marker} alto ou baixo",
+  'info.common': "Estes são motivos comuns, não um diagnóstico. Só um médico que conhece o seu histórico pode dizer o que vale para você.",
   'marker.whatMeans': 'O que significa',
   'marker.inRange': 'Seu último valor está dentro da faixa de referência. Este resultado não precisa de revisão médica.',
   'marker.outRange.low': 'Seu último valor está abaixo da faixa de referência.',
@@ -147,11 +152,6 @@ export default {
 
   'rec.recheck': 'Refazer em cerca de 3 meses', 'rec.visit': 'Marcar consulta de resultados', 'rec.tests': 'Precisa de mais exames', 'rec.none': 'Nenhuma ação necessária',
 
-  'about.ferritin': 'A ferritina mostra quanto ferro o corpo tem armazenado. As reservas podem cair antes de a hemoglobina mudar.',
-  'about.haemoglobin': 'A hemoglobina leva oxigênio nos glóbulos vermelhos. Um valor baixo é um dos sinais de anemia.',
-  'about.vitamin_d': 'A vitamina D ajuda ossos, imunidade e equilíbrio hormonal. Níveis baixos são comuns no inverno e muitas vezes ligados a cansaço.',
-  'about.tsh': 'O TSH é o sinal que o cérebro envia à tireoide. Costuma ser o primeiro exame da função da tireoide.',
-  'about.generic': 'Seu médico pode explicar o que este marcador significa para você.',
 
   'doc.console': 'Painel do médico',
   'doc.nav.queue': 'Fila de revisões', 'doc.nav.agenda': 'Agenda', 'doc.nav.patients': 'Pacientes', 'doc.nav.notifications': 'Notificações', 'doc.nav.profile': 'Meu perfil',

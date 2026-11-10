@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { byCode, markerName } from '../../lib/markers.js';
+import { markerInfo } from '../../lib/markerInfo.js';
 
 /** Download a calendar reminder (.ics) — works on iPhone, Android, Google and Outlook, free. */
 function downloadReminder(title, months = 3) {
@@ -50,6 +51,41 @@ export function ReviewCard({ review, onRate }) {
   );
 }
 
+/** What the marker is and common reasons for a high or low value, then the status in words. */
+function MarkerExplainer({ code, status, info }) {
+  const { t, lang } = useI18n();
+  const name = markerName(code, lang);
+  const Reasons = ({ dir }) => info?.[dir]?.length ? (
+    <>
+      <div className="small mt16" style={{ fontWeight: 600 }}>{t('info.why.' + dir, { marker: name })}</div>
+      <ul className="small" style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.5 }}>{info[dir].map((r) => <li key={r}>{r}</li>)}</ul>
+    </>
+  ) : null;
+  const out = status === 'high' || status === 'low';
+  return (
+    <div className="card mt16" data-testid="marker-info">
+      <h2 style={{ margin: 0 }}>{t('marker.whatMeans')}</h2>
+      <p className="small" style={{ fontWeight: 600, margin: '10px 0 0' }}>
+        {status === 'normal' ? t('marker.inRange') : status === 'unknown' ? t('marker.noRange') : t('marker.outRange.' + status)}
+      </p>
+      {info && (
+        <>
+          <div className="small mt16" style={{ fontWeight: 600 }}>{t('info.whatIs', { marker: name })}</div>
+          <p className="small" style={{ margin: '6px 0 0', lineHeight: 1.5 }}>{info.what}</p>
+          {out ? <Reasons dir={status} /> : (info.high || info.low) && (
+            <details className="mt16 small">
+              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('info.whyBoth', { marker: name })}</summary>
+              <Reasons dir="high" /><Reasons dir="low" />
+            </details>
+          )}
+          <p className="tiny muted" style={{ margin: '14px 0 0' }}>{t('info.common')}</p>
+        </>
+      )}
+      <p className="tiny muted" style={{ margin: '4px 0 0' }}>{t('marker.sample')}</p>
+    </div>
+  );
+}
+
 export default function Marker() {
   const { code } = useParams();
   const { t, lang, fmtDate, fmtNum } = useI18n();
@@ -72,7 +108,7 @@ export default function Marker() {
   const band = last.ref_low_canonical != null || last.ref_high_canonical != null ? [last.ref_low_canonical, last.ref_high_canonical] : null;
   const points = list.map((r) => ({ date: r.test_date, value: r.value_canonical, status: r.status, country: r.country, lab: r.lab_name }));
   const myDoctor = review?.doctor || data.shares.find((s) => !s.revoked_at)?.doctor;
-  const about = t('about.' + code) !== 'about.' + code ? t('about.' + code) : t('about.generic');
+  const info = markerInfo(code, lang);
   const mixedUnits = new Set(list.map((r) => r.unit)).size > 1 || new Set(list.map((r) => r.country)).size > 1;
 
   return (
@@ -92,29 +128,7 @@ export default function Marker() {
       {last.context?.expected && <div className="card-tan small mt16">{t('situation.expectedWhy.' + last.context.expected)}</div>}
       {last.context?.dose && <div className="card-tan small mt16">{t('situation.dose')}</div>}
 
-      <div className="card mt16">
-        <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('marker.ref')}: {fmtNum(band[0])}–{fmtNum(band[1])} {last.canonical_unit}</span>}</div>
-        <div className="mt8"><TrendChart points={points} band={band} unit={last.canonical_unit} /></div>
-        {mixedUnits && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('marker.converted', { unit: last.canonical_unit })}</p>}
-        <button className="btn btn-link small" onClick={() => setShowAll(!showAll)}>{showAll ? t('marker.hide') : t('marker.all')}</button>
-        {showAll && (
-          <table className="cmp">
-            <thead><tr><th>{t('check.date')}</th><th>{t('marker.printed')}</th><th>{last.canonical_unit}</th><th /></tr></thead>
-            <tbody>{[...list].reverse().map((r) => (
-              <tr key={r.id}><td>{fmtDate(r.test_date)}<div className="tiny muted">{[r.lab_name, r.country].filter(Boolean).join(' · ')}</div></td>
-                <td>{fmtNum(r.value)} {r.unit}</td><td>{fmtNum(r.value_canonical)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
-            ))}</tbody>
-          </table>
-        )}
-      </div>
-
-      <h2 className="mt24">{t('marker.whatMeans')}</h2>
-      {last.status === 'normal'
-        ? <p className="small">{t('marker.inRange')}</p>
-        : last.status === 'unknown' ? <p className="small">{t('marker.noRange')}</p>
-          : <p className="small">{t('marker.outRange.' + last.status)}</p>}
-      <p className="small muted">{about}</p>
-      <p className="tiny muted">{t('marker.sample')}</p>
+      <MarkerExplainer code={code} status={last.status} info={info} />
 
       {review && reviewCoversLatest && <ReviewCard review={review} onRate={review.status === 'answered' ? (n) => { api.rateReview(review.id, n); showToast(t('marker.thanks')); } : null} />}
       {review && !reviewCoversLatest && review.status === 'answered' && (
@@ -136,6 +150,22 @@ export default function Marker() {
         </button>
         <button className="btn btn-ghost" onClick={() => { downloadReminder(t('next.reminderTitle', { marker: markerName(code, lang) })); showToast(t('next.reminderDone')); }}>{t('next.remind')}</button>
         <button className="btn btn-ghost" onClick={() => nav('/sharing')}>{t('next.share')}</button>
+      </div>
+
+      <div className="card mt24">
+        <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('marker.ref')}: {fmtNum(band[0])}–{fmtNum(band[1])} {last.canonical_unit}</span>}</div>
+        <div className="mt8"><TrendChart points={points} band={band} unit={last.canonical_unit} /></div>
+        {mixedUnits && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('marker.converted', { unit: last.canonical_unit })}</p>}
+        <button className="btn btn-link small" onClick={() => setShowAll(!showAll)}>{showAll ? t('marker.hide') : t('marker.all')}</button>
+        {showAll && (
+          <table className="cmp">
+            <thead><tr><th>{t('check.date')}</th><th>{t('marker.printed')}</th><th>{last.canonical_unit}</th><th /></tr></thead>
+            <tbody>{[...list].reverse().map((r) => (
+              <tr key={r.id}><td>{fmtDate(r.test_date)}<div className="tiny muted">{[r.lab_name, r.country].filter(Boolean).join(' · ')}</div></td>
+                <td>{fmtNum(r.value)} {r.unit}</td><td>{fmtNum(r.value_canonical)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
+            ))}</tbody>
+          </table>
+        )}
       </div>
     </Phone>
   );
