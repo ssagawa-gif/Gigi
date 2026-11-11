@@ -32,7 +32,11 @@ jobs:
           else echo "::warning::Add the SUPABASE_DB_URL and SUPABASE_ACCESS_TOKEN secrets (see the top of this file). Nothing was changed."; echo "ready=false" >> "$GITHUB_OUTPUT"; fi
       - name: Install psql
         if: steps.check.outputs.ready == 'true'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+        # psql is usually already on the runner; install only if missing, and retry apt once (mirrors can fail)
+        run: |
+          if command -v psql >/dev/null; then psql --version; exit 0; fi
+          for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client && break; sleep 15; done
+          psql --version
       - name: Read the database address (works with any characters in the password)
         if: steps.check.outputs.ready == 'true'
         env:
