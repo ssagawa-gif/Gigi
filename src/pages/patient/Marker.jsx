@@ -8,6 +8,8 @@ import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { byCode, markerName } from '../../lib/markers.js';
 import { markerInfo } from '../../lib/markerInfo.js';
+import { rangeText, actionLevel } from '../../lib/results.js';
+import { ActionChip, NormalRange, plainOutcome } from '../../components/ResultBits.jsx';
 
 /** Download a calendar reminder (.ics) — works on iPhone, Android, Google and Outlook, free. */
 function downloadReminder(title, months = 3) {
@@ -119,9 +121,13 @@ export default function Marker() {
         <span className="serif" style={{ fontSize: 26 }}>{fmtNum(last.value)} {last.unit}</span><StatusBadge status={last.status} ctx={last.context} />
       </div>
       <div className="tiny muted center">{[fmtDate(last.test_date), last.lab_name, last.country].filter(Boolean).join(' · ')}</div>
-      {m?.loinc && <div className="tiny muted center" style={{ opacity: .7 }}>LOINC {m.loinc}</div>}
-      {last.context?.phase && <div className="tiny muted center">{t('marker.phaseInfo', { phase: t('phase.' + last.context.phase) })}</div>}
-      {last.context?.range_source && <div className="tiny muted center">{t('range.' + last.context.range_source)}</div>}
+      <div className="card mt16 center" data-testid="in-short">
+        <div className="serif" style={{ fontSize: 22 }}>{plainOutcome(last, t, lang)}</div>
+        <div className="mt8"><NormalRange r={last} /></div>
+        <div className="mt8"><ActionChip level={actionLevel(last)} /></div>
+        <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('action.sub.' + actionLevel(last))}</p>
+      </div>
+      {last.context?.range_source && <div className="tiny muted center mt8">{t('range.' + last.context.range_source)}</div>}
       {last.context?.urgency && (
         <div className="urgent-box mt16 small" data-testid="urgent-box"><b>{t('urgent.title.' + last.context.urgency)}</b><div>{t('urgent.sub')}</div></div>
       )}
@@ -153,7 +159,7 @@ export default function Marker() {
       </div>
 
       <div className="card mt24">
-        <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('marker.ref')}: {fmtNum(band[0])}–{fmtNum(band[1])} {last.canonical_unit}</span>}</div>
+        <div className="row between small"><b>{t('marker.trend', { n: list.length })}</b>{band && <span className="tiny muted">{t('range.normal')}: {rangeText(band[0], band[1], t, fmtNum)} {last.canonical_unit}</span>}</div>
         <div className="mt8"><TrendChart points={points} band={band} unit={last.canonical_unit} /></div>
         {mixedUnits && <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('marker.converted', { unit: last.canonical_unit })}</p>}
         <button className="btn btn-link small" onClick={() => setShowAll(!showAll)}>{showAll ? t('marker.hide') : t('marker.all')}</button>
@@ -173,7 +179,7 @@ export default function Marker() {
 
 export function RequestReview() {
   const { code } = useParams();
-  const { t, lang, fmtNum, fmtMoney } = useI18n();
+  const { t, lang, fmtNum, fmtMoney, fmtFee } = useI18n();
   const nav = useNavigate();
   const { showToast } = useSession();
   const { data, loading } = useData(async () => ({ doctors: await api.listDoctors(), results: await api.listResults() }), []);
@@ -203,7 +209,7 @@ export function RequestReview() {
       <div className="stack">
         {data.doctors.map((d) => (
           <button key={d.id} className={'option' + (doctor === d.id ? ' on' : '')} onClick={() => setDoctor(d.id)}>
-            <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 17 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)} · {d.languages?.join(', ')}</div>{d.results_visit_fee != null && <div className="tiny muted">{t('doctor.resultsVisit')}: {fmtMoney(d.results_visit_fee)}</div>}</div></div>
+            <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 17 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)} · {d.languages?.join(', ')}</div><div className="tiny muted">{t('doctor.resultsVisit')}: {fmtFee(d.results_visit_fee)}</div></div></div>
             <span className="radio" />
           </button>
         ))}

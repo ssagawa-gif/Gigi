@@ -115,7 +115,19 @@ export const demoBackend = {
     const db = load(); const id = requireMe();
     const pid = patientId || id;
     if (pid !== id && !activeShare(db, pid, id)) return [];
-    return db.results.filter((r) => r.patient_id === pid).sort((a, b) => a.test_date.localeCompare(b.test_date));
+    // Free plan: a doctor sees only the last 12 months (same rule as the database)
+    const yearAgo = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+    const premium = db.profiles.find((x) => x.id === pid)?.plan === 'premium';
+    return db.results.filter((r) => r.patient_id === pid && (pid === id || premium || r.test_date >= yearAgo))
+      .sort((a, b) => a.test_date.localeCompare(b.test_date));
+  },
+  async startPremiumTrial() {
+    const db = load(); const p = db.profiles.find((x) => x.id === requireMe());
+    p.plan = 'premium'; p.plan_since = p.plan_since || nowIso(); save(db); return p;
+  },
+  async endPremium() {
+    const db = load(); const p = db.profiles.find((x) => x.id === requireMe());
+    p.plan = 'free'; save(db); return p;
   },
   async addReport({ file, lab_name, country, test_date }) {
     const db = load(); const id = requireMe();

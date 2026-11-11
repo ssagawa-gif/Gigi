@@ -77,6 +77,11 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
     pt: (d) => ({ subject: `Sua consulta online com ${d.doctor_name} está confirmada`, title: 'Consulta confirmada', body: [`Consulta online com ${d.doctor_name} em ${d.when}.`, 'Na hora da consulta, use o botão abaixo para entrar na videochamada pelo celular ou computador.'], cta: 'Ver minha consulta no GiGi' }),
     es: (d) => ({ subject: `Tu cita online con ${d.doctor_name} está confirmada`, title: 'Cita confirmada', body: [`Cita online con ${d.doctor_name} el ${d.when}.`, 'A la hora de la cita, usa el botón de abajo para entrar en la videollamada desde el móvil o el ordenador.'], cta: 'Ver mi cita en GiGi' }),
   },
+  followup_reminder: {
+    en: (d) => ({ subject: `Time to book your follow-up with ${d.doctor_name}`, title: 'Time for your follow-up', body: [`It has been ${d.months} months since your visit with ${d.doctor_name}.`, 'Book your follow-up visit in GiGi when it suits you.'], cta: 'Book my follow-up' }),
+    pt: (d) => ({ subject: `Hora de marcar seu retorno com ${d.doctor_name}`, title: 'Hora do seu retorno', body: [`Já se passaram ${d.months} meses desde sua consulta com ${d.doctor_name}.`, 'Marque seu retorno no GiGi quando for bom para você.'], cta: 'Marcar meu retorno' }),
+    es: (d) => ({ subject: `Es hora de reservar tu revisión con ${d.doctor_name}`, title: 'Es hora de tu revisión', body: [`Han pasado ${d.months} meses desde tu cita con ${d.doctor_name}.`, 'Reserva tu cita de revisión en GiGi cuando te venga bien.'], cta: 'Reservar mi revisión' }),
+  },
   appointment_cancelled: {
     en: (d) => ({ subject: `Appointment cancelled: ${d.when}`, title: 'Appointment cancelled', body: [`${d.name} cancelled the appointment on ${d.when}.`], cta: 'Open GiGi' }),
     pt: (d) => ({ subject: `Consulta cancelada: ${d.when}`, title: 'Consulta cancelada', body: [`${d.name} cancelou a consulta de ${d.when}.`], cta: 'Abrir o GiGi' }),

@@ -163,7 +163,7 @@ export function AboutYou() {
   async function next() {
     await api.updateProfile({ full_name: name, reasons, insurer: insurer.trim() || null });
     await refresh();
-    nav('/add?first=1');
+    nav('/history');
   }
   return (
     <Phone>
@@ -186,6 +186,104 @@ export function AboutYou() {
       </div>
       <div className="spacer" />
       <button className="btn btn-primary mt24" disabled={!reasons.length || !name.trim()} onClick={next}>{t('common.continue')}</button>
+    </Phone>
+  );
+}
+
+// ---------- Health history (Dr Kat's feedback): required once, editable later in Settings ----------
+export const HISTORY_YESNO = ['allergies', 'medications', 'conditions', 'surgeries', 'cancer', 'family'];
+const CYCLE_OPTS = ['regular', 'irregular', 'none', 'menopause'];
+const CONTRA_OPTS = ['none', 'pill', 'hormonal_other', 'non_hormonal'];
+
+/** True when every required answer is there. */
+export function historyComplete(h, birth) {
+  if (!h || !birth || !h.cycle || !h.contraception) return false;
+  if ((h.cycle === 'regular' || h.cycle === 'irregular') && !h.cycle_length) return false;
+  return HISTORY_YESNO.every((k) => h[k]?.has === true || h[k]?.has === false);
+}
+
+export function HealthHistory() {
+  const { t } = useI18n();
+  const nav = useNavigate();
+  const [params] = useSearchParams();
+  const { session, refresh, showToast } = useSession();
+  const p = session?.profile || {};
+  const [birth, setBirth] = useState(p.birth_date || '');
+  const [h, setH] = useState(() => ({
+    cycle: '', cycle_length: '', contraception: '', contraception_detail: '',
+    ...Object.fromEntries(HISTORY_YESNO.map((k) => [k, { has: null, detail: '' }])),
+    ...(p.medical_history || {}),
+  }));
+  const [busy, setBusy] = useState(false);
+  const editing = !!p.medical_history;
+  const set = (patch) => setH({ ...h, ...patch });
+  const needsLength = h.cycle === 'regular' || h.cycle === 'irregular';
+  const ok = historyComplete({ ...h, cycle_length: needsLength ? Number(h.cycle_length) || null : null }, birth);
+
+  async function save() {
+    setBusy(true);
+    const clean = {
+      ...h,
+      cycle_length: needsLength ? Number(h.cycle_length) || null : null,
+      contraception_detail: h.contraception_detail.trim(),
+      ...Object.fromEntries(HISTORY_YESNO.map((k) => [k, { has: h[k].has, detail: h[k].has ? (h[k].detail || '').trim() : '' }])),
+      updated_at: new Date().toISOString(),
+    };
+    await api.updateProfile({ birth_date: birth, medical_history: clean });
+    await refresh();
+    setBusy(false);
+    if (editing) showToast(t('hist.saved'));
+    nav(params.get('next') || (editing ? '/settings' : '/add?first=1'), { replace: true });
+  }
+
+  const Choice = ({ value, options, onPick, prefix }) => (
+    <div className="chips mt8">
+      {options.map((o) => <button key={o} type="button" className={'chip' + (value === o ? ' on' : '')} onClick={() => onPick(o)}>{t(prefix + o)}</button>)}
+    </div>
+  );
+
+  return (
+    <Phone>
+      <TopBar title={editing ? t('hist.title') : undefined} />
+      {!editing && <h1>{t('hist.title')}</h1>}
+      <p className="muted small">{t('hist.sub')}</p>
+
+      <label className="lbl">{t('hist.birth')}</label>
+      <input className="field" type="date" value={birth} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setBirth(e.target.value)} aria-label={t('hist.birth')} />
+
+      <label className="lbl">{t('hist.cycle')}</label>
+      <Choice value={h.cycle} options={CYCLE_OPTS} prefix="hist.cycle." onPick={(o) => set({ cycle: o })} />
+      {needsLength && (
+        <>
+          <label className="lbl">{t('hist.cycleLength')}</label>
+          <input className="field" inputMode="numeric" value={h.cycle_length || ''} onChange={(e) => set({ cycle_length: e.target.value.replace(/\D/g, '').slice(0, 2) })} aria-label={t('hist.cycleLength')} placeholder="28" />
+        </>
+      )}
+
+      <label className="lbl">{t('hist.contra')}</label>
+      <Choice value={h.contraception} options={CONTRA_OPTS} prefix="hist.contra." onPick={(o) => set({ contraception: o })} />
+      {h.contraception && h.contraception !== 'none' && (
+        <input className="field mt8" value={h.contraception_detail} onChange={(e) => set({ contraception_detail: e.target.value })} placeholder={t('hist.whichOne')} aria-label={t('hist.whichOne')} />
+      )}
+
+      {HISTORY_YESNO.map((k) => (
+        <div key={k} data-testid={'hist-' + k}>
+          <label className="lbl">{t('hist.q.' + k)}</label>
+          <div className="chips mt8">
+            {[true, false].map((v) => (
+              <button key={String(v)} type="button" className={'chip' + (h[k].has === v ? ' on' : '')} onClick={() => set({ [k]: { ...h[k], has: v } })}>{t(v ? 'hist.yes' : 'hist.no')}</button>
+            ))}
+          </div>
+          {h[k].has && (
+            <textarea className="field mt8" rows={2} value={h[k].detail} onChange={(e) => set({ [k]: { ...h[k], detail: e.target.value } })} placeholder={t('hist.ph.' + k)} aria-label={t('hist.q.' + k)} />
+          )}
+        </div>
+      ))}
+
+      <div className="row mt16 tiny muted" style={{ alignItems: 'flex-start' }}><Icon name="shield" size={14} /><span>{t('hist.private')}</span></div>
+      <div className="spacer" />
+      {!ok && <p className="tiny muted center mt16">{t('hist.required')}</p>}
+      <button className="btn btn-primary mt8" disabled={!ok || busy} onClick={save}>{editing ? t('common.save') : t('common.continue')}</button>
     </Phone>
   );
 }

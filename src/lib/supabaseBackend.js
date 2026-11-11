@@ -85,6 +85,8 @@ export function makeSupabaseBackend(url, anonKey) {
     },
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
+    async startPremiumTrial() { ok(await sb.rpc('start_premium_trial')); fire(); },
+    async endPremium() { ok(await sb.rpc('end_premium')); fire(); },
     async updateProfile(patch) { const id = await uidOf(); const row = ok(await sb.from('profiles').update(patch).eq('id', id).select().single()); fire(); return row; },
     async updateDoctor(patch) { const id = await uidOf(); return ok(await sb.from('doctors').update(patch).eq('id', id).select().single()); },
 

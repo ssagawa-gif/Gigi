@@ -208,7 +208,7 @@ export function useNotifText() {
     const d = n.data || {};
     const marker = d.marker_code ? markerName(d.marker_code, lang) : '';
     return t('notif.' + n.type, {
-      patient: d.patient_name, doctor: d.doctor_name, name: d.name, marker,
+      patient: d.patient_name, doctor: d.doctor_name, name: d.name, marker, months: d.months,
       when: d.starts_at ? fmtSlot(d.starts_at) : '',
     });
   };

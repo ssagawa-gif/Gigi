@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, TopBar, MeAvatar, LangPicker, Loading, Empty, useNotifText, ConfirmButton } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
-import { api, IS_DEMO, WAITLIST_URL } from '../../lib/api.js';
+import { api, IS_DEMO } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { COUNTRIES, useCountryName } from './AddResult.jsx';
 
@@ -11,7 +11,7 @@ export function Sharing() {
   const { t, fmtDate } = useI18n();
   const { session, showToast } = useSession();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ doctor_id: '', days: 30, scopes: ['bloodwork'] });
+  const [form, setForm] = useState({ doctor_id: '', days: 30, scopes: ['bloodwork', 'history'] });
   const { data, loading } = useData(async () => ({ shares: await api.listShares(), doctors: await api.listDoctors() }), []);
   const now = Date.now();
   const active = (data?.shares || []).filter((s) => !s.revoked_at && new Date(s.expires_at) > now);
@@ -73,47 +73,46 @@ export function Sharing() {
   );
 }
 
+/** Free vs Premium (Ste, 11 Nov): same app and booking for both; Premium keeps sharing the full history
+ *  after 1 year and sends reminders to book the follow-up visit. Premium is free to try during the beta. */
 export function Plans() {
   const { t } = useI18n();
-  const { session, showToast } = useSession();
-  const [plan, setPlan] = useState(null);
-  const [form, setForm] = useState({ name: session?.profile?.full_name || '', email: session?.user?.email || '', consent: false });
-  const [done, setDone] = useState(false);
-  const plans = [
-    ['free', '€0', 'plans.free'],
-    ['plus', '€6.99', 'plans.plus'],
-    ['one', '€19', 'plans.one'],
-  ];
-  function choose(p) {
-    setPlan(p);
-    if (WAITLIST_URL) window.open(`${WAITLIST_URL}${WAITLIST_URL.includes('?') ? '&' : '?'}plan=${p}`, '_blank', 'noopener');
-  }
-  async function join() {
-    await api.joinWaitlist({ name: form.name, email: form.email, plan, consent: form.consent });
-    setDone(true); showToast(t('plans.thanks'));
-  }
+  const { session, refresh, showToast } = useSession();
+  const p = session?.profile || {};
+  const premium = p.plan === 'premium';
+  const [months, setMonths] = useState(p.followup_months || 6);
+  const [busy, setBusy] = useState(false);
+  async function start() { setBusy(true); await api.startPremiumTrial(); await api.updateProfile({ followup_months: months }); await refresh(); setBusy(false); showToast(t('plans.started')); }
+  async function stop() { setBusy(true); await api.endPremium(); await refresh(); setBusy(false); showToast(t('plans.stopped')); }
+  async function chooseMonths(n) { setMonths(n); if (premium) { await api.updateProfile({ followup_months: n }); await refresh(); } }
+  const Card = ({ k, price, on }) => (
+    <div className={'card' + (on ? '' : '')} data-testid={'plan-' + k} style={on ? { borderColor: 'var(--cherry)', borderWidth: 2 } : undefined}>
+      <div className="row between">
+        <div className="serif" style={{ fontSize: 24 }}>{t('plans.' + k + '.t')}</div>
+        <div style={{ textAlign: 'right' }}><b>{price}</b>{k === 'premium' && <div className="tiny muted">{t('plans.month')}</div>}</div>
+      </div>
+      {on && <span className="badge cherry mt8">{t('plans.current')}</span>}
+      <ul className="small" style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
+        {[1, 2, 3, 4].map((n) => t(`plans.${k}.f${n}`)).filter((x) => !x.startsWith('plans.')).map((x) => <li key={x}>{x}</li>)}
+      </ul>
+    </div>
+  );
   return (
     <Phone>
       <TopBar title={t('plans.title')} />
       <div className="stack">
-        {plans.map(([k, price, key]) => (
-          <button key={k} className={'option' + (plan === k ? ' on' : '')} onClick={() => choose(k)}>
-            <div><div className="serif" style={{ fontSize: 20 }}>{t(key + '.t')}</div><div className="tiny muted">{t(key + '.d')}</div></div>
-            <div style={{ textAlign: 'right' }}><b>{price}</b>{k === 'plus' && <div className="tiny muted">{t('plans.month')}</div>}</div>
-          </button>
-        ))}
+        <Card k="free" price="€0" on={!premium} />
+        <Card k="premium" price="€6.99" on={premium} />
       </div>
-      <p className="tiny muted center mt8">{t('plans.testing')}</p>
-      {plan && !WAITLIST_URL && !done && (
-        <div className="card mt16">
-          <p className="small" style={{ marginTop: 0 }}>{t('plans.waitlist')}</p>
-          <label className="lbl">{t('auth.name')}</label><input className="field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <label className="lbl">{t('auth.email')}</label><input className="field" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <label className="row mt16 small" style={{ alignItems: 'flex-start' }}><input type="checkbox" checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} />{t('plans.consent')}</label>
-          <button className="btn btn-primary mt16" disabled={!form.email || !form.consent} onClick={join}>{t('plans.join')}</button>
-        </div>
-      )}
-      {done && <div className="card-tan mt16 small">{t('plans.thanks')}</div>}
+      <div className="card-tan mt16">
+        <div className="small" style={{ fontWeight: 600 }}>{t('plans.reminderQ')}</div>
+        <div className="chips mt8">{[3, 6, 12].map((n) => <button key={n} className={'chip' + (months === n ? ' on' : '')} onClick={() => chooseMonths(n)}>{t('plans.months', { n })}</button>)}</div>
+        <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('plans.reminderSub')}</p>
+      </div>
+      {premium
+        ? <button className="btn btn-ghost mt16" disabled={busy} onClick={stop}>{t('plans.backToFree')}</button>
+        : <button className="btn btn-primary mt16" disabled={busy} onClick={start} data-testid="try-premium">{t('plans.try')}</button>}
+      <p className="tiny muted center mt8">{t('plans.beta')}</p>
     </Phone>
   );
 }
@@ -149,6 +148,10 @@ export function Settings() {
       <label className="lbl">{t('record.personal')}</label>
       <textarea className="field" rows={3} value={form.history_note} onChange={(e) => setForm({ ...form, history_note: e.target.value })} />
       <button className="btn btn-primary mt16" onClick={save}>{t('common.save')}</button>
+
+      <h3 className="mt24">{t('hist.title')}</h3>
+      <p className="tiny muted" style={{ marginTop: 0 }}>{t('hist.settingsSub')}</p>
+      <button className="btn btn-ghost" onClick={() => nav('/history')}>{t('hist.edit')}</button>
 
       <h3 className="mt24">{t('settings.language')}</h3>
       <div className="mt8"><LangPicker onChange={(l) => api.updateProfile({ language: l })} /></div>

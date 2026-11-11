@@ -11,8 +11,9 @@ import { NotificationsList } from '../patient/More.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api, IS_DEMO } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
-import { markerName, SITUATIONS } from '../../lib/markers.js';
-import { byMarker } from '../../lib/results.js';
+import { markerName, SITUATIONS, isPhaseMarker } from '../../lib/markers.js';
+import { NormalRange } from '../../components/ResultBits.jsx';
+import { byMarker, rangeText, cycleText } from '../../lib/results.js';
 
 export function DoctorShell({ children, title, actions }) {
   const { t } = useI18n();
@@ -134,7 +135,7 @@ function CaseView({ review }) {
     if (!review.response && last && !response) {
       setResponse(t('doc.draft', {
         marker: markerName(review.marker_code, lang), value: fmtNum(last.value), unit: last.unit,
-        status: t('status.' + last.status).toLowerCase(), low: fmtNum(last.ref_low), high: fmtNum(last.ref_high),
+        status: t('status.' + last.status).toLowerCase(), range: rangeText(last.ref_low, last.ref_high, t, fmtNum) || '—',
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,7 +171,7 @@ function CaseView({ review }) {
             <div><h3>{markerName(review.marker_code, lang)}</h3><div className="tiny muted">{[fmtDate(last.test_date), last.lab_name, last.country].filter(Boolean).join(' · ')}</div></div>
             <div className="row"><b style={{ fontSize: 20 }}>{fmtNum(last.value)} {last.unit}</b><StatusBadge status={last.status} ctx={last.context} /></div>
           </div>
-          <div className="tiny muted mt8">{t('marker.ref')}: {fmtNum(last.ref_low)}–{fmtNum(last.ref_high)} {last.unit}</div>
+          <div className="mt8"><NormalRange r={last} /></div>
           {last.context?.urgency && <div className="urgent-box mt8 small"><b>{t('urgent.doc.' + last.context.urgency)}</b></div>}
           {last.context?.expected && <div className="tiny muted mt8">{t('situation.expectedWhy.' + last.context.expected)}</div>}
           {last.context?.dose && <div className="tiny mt8" style={{ color: 'var(--cherry)' }}>{t('situation.dose')}</div>}
@@ -184,7 +185,7 @@ function CaseView({ review }) {
           <h3>{t('doc.otherMarkers')}</h3>
           <table className="cmp mt8"><tbody>
             {Object.entries(byMarker(results)).map(([code, l]) => { const r = l[l.length - 1]; return (
-              <tr key={code}><td>{markerName(code, lang)}</td><td>{fmtNum(r.value)} {r.unit}</td><td className="muted">{fmtDate(r.test_date)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
+              <tr key={code}><td>{markerName(code, lang)}{isPhaseMarker(code) && cycleText(r.context, t) && <div className="tiny muted">{cycleText(r.context, t)}</div>}</td><td>{fmtNum(r.value)} {r.unit}</td><td className="tiny muted">{rangeText(r.ref_low, r.ref_high, t, fmtNum)}</td><td className="muted">{fmtDate(r.test_date)}</td><td><StatusBadge status={r.status} ctx={r.context} /></td></tr>
             ); })}
           </tbody></table>
         </div>
@@ -342,7 +343,7 @@ export function Patients() {
           </div>
           <div>
             <div className="mt8" style={{ marginBottom: 16 }}>
-              <PatientSummary patient={share?.scopes.includes('history') ? share?.patient : { ...share?.patient, history_note: null }}
+              <PatientSummary patient={share?.scopes.includes('history') ? share?.patient : { ...share?.patient, history_note: null, medical_history: null }}
                 results={results || []} appts={extra?.appts || []} reviews={extra?.reviews || []} />
             </div>
             <div className="card">
@@ -351,7 +352,7 @@ export function Patients() {
             </div>
             {tab === 'markers' && (
               <div className="split two mt16">
-                <MarkerList results={results || []} onOpen={setMarker} grid={false} />
+                <MarkerList results={results || []} onOpen={setMarker} grid={false} forDoctor />
                 {marker && groups[marker] && (() => { const l = groups[marker]; const last = l[l.length - 1]; return (
                   <div className="card"><h3>{markerName(marker, lang)}</h3>
                     <TrendChart points={l.map((r) => ({ date: r.test_date, value: r.value_canonical, country: r.country, lab: r.lab_name }))} band={[last.ref_low_canonical, last.ref_high_canonical]} unit={last.canonical_unit} /></div>

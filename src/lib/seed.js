@@ -26,7 +26,11 @@ export function seed() {
     profiles: [
       { id: LAURA, role: 'patient', full_name: 'Laura', language: 'en', city: 'Gràcia, Barcelona', country: ES,
         reasons: ['understand', 'fertility'], insurer: 'Sanitas', consent_at: now,
-        history_note: 'Laura, 31. Stopped the combined pill in June 2026. Would like children in the next few years. Insured with Sanitas.' },
+        history_note: 'Laura, 31. Stopped the combined pill in June 2026. Would like children in the next few years. Insured with Sanitas.',
+        birth_date: '1995-03-14', plan: 'free',
+        medical_history: { cycle: 'regular', cycle_length: 28, contraception: 'none', contraception_detail: '',
+          allergies: { has: false, detail: '' }, medications: { has: false, detail: '' }, conditions: { has: false, detail: '' },
+          surgeries: { has: false, detail: '' }, cancer: { has: false, detail: '' }, family: { has: false, detail: '' } } },
       { id: MARTA, role: 'doctor', full_name: 'Dr Marta Puig', language: 'es', country: ES },
       { id: MARC, role: 'doctor', full_name: 'Dr Marc Rovira', language: 'es', country: ES },
       { id: LAIA, role: 'doctor', full_name: 'Dr Laia Soler', language: 'es', country: ES },

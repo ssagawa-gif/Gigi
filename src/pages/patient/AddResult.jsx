@@ -7,6 +7,16 @@ import { api } from '../../lib/api.js';
 import { useSession } from '../../lib/session.jsx';
 import { MARKERS, byCode, assess, buildResult, SITUATIONS, situationPhase, markerName, standardRange, phaseFromCycle, progesteroneTiming, isPhaseMarker, needsAge } from '../../lib/markers.js';
 import { readLabPdf } from '../../lib/pdfReader.js';
+import { rangeText } from '../../lib/results.js';
+
+/** Age in whole years on a given date, from an ISO birth date. */
+export function ageOn(birth, when) {
+  if (!birth) return null;
+  const b = new Date(birth), d = when || new Date();
+  let a = d.getFullYear() - b.getFullYear();
+  if (d.getMonth() < b.getMonth() || (d.getMonth() === b.getMonth() && d.getDate() < b.getDate())) a -= 1;
+  return a > 0 && a < 120 ? a : null;
+}
 
 export const COUNTRIES = ['ES', 'BR', 'PT', 'FR', 'IT', 'DE', 'GB', 'IE', 'NL', 'CH', 'US', 'CA', 'MX', 'AR', 'CL', 'CO', 'PE', 'UY'];
 export function useCountryName() {
@@ -84,9 +94,12 @@ export function CheckResults() {
   const { session, showToast } = useSession();
   const countryName = useCountryName();
   const [ctx, setCtx] = useState({ lab: '', country: session?.profile?.country || 'ES', date: new Date().toISOString().slice(0, 10) });
-  const [cycle, setCycle] = useState({ day: '', length: 28, menopause: false });
-  const [age, setAge] = useState('');
-  const [sit, setSit] = useState({ pill: false, breastfeeding: false, no_period: false, thyroid_med: false, notes: '' });
+  // Start from what she told GiGi in her health history; the report header (if read) wins below
+  const hist = session?.profile?.medical_history || {};
+  const [cycle, setCycle] = useState({ day: '', length: hist.cycle_length || 28, menopause: hist.cycle === 'menopause' });
+  const [age, setAge] = useState(() => String(ageOn(session?.profile?.birth_date, new Date()) ?? ''));
+  const [sit, setSit] = useState({ pill: hist.contraception === 'pill', breastfeeding: false, no_period: hist.cycle === 'none', thyroid_med: false, notes: '' });
+  const [fromReport, setFromReport] = useState([]);   // which details came from the report header
   const [rows, setRows] = useState([emptyRow()]);
   const [reading, setReading] = useState(!!file && /pdf$/i.test(file.type || file.name));
   const [readInfo, setReadInfo] = useState(null);   // { found, textFound }
@@ -111,6 +124,14 @@ export function CheckResults() {
       if (!alive) return;
       if (res.rows.length) setRows(res.rows.map((r) => withStd({ ...r, value: String(r.value), low: r.low ?? '', high: r.high ?? '' })));
       setCtx((c) => ({ ...c, date: res.date || c.date, lab: res.lab || c.lab }));
+      const pt = res.patient || {}, got = [];
+      if (pt.age) { setAge(String(pt.age)); got.push('age'); }
+      else if (session?.profile?.birth_date && res.date) setAge(String(ageOn(session.profile.birth_date, new Date(res.date)) ?? ''));
+      if (pt.cycleDay || pt.cycleLength || pt.menopause) {
+        setCycle((c) => ({ day: pt.cycleDay ? String(pt.cycleDay) : c.day, length: pt.cycleLength || c.length, menopause: pt.menopause || c.menopause }));
+        if (pt.cycleDay) got.push('cycleDay'); if (pt.cycleLength) got.push('cycleLength');
+      }
+      setFromReport(got);
       setReadInfo({ found: res.rows.length, textFound: res.textFound });
       setReading(false);
     });
@@ -144,9 +165,9 @@ export function CheckResults() {
           context: { range_source: r.rangeSource || 'manual', situation: situationToSave, ...(isPhaseMarker(r.code) ? { phase, cycle_day: cycle.day || null, cycle_length: cycle.length, menopause: cycle.menopause } : {}), ...(needsAge(r.code) ? { age: age || null } : {}) } }),
         report_id: report.id }));
       await api.addResults(built);
-      const flagged = built.find((r) => r.context?.urgency === 'today') || built.find((r) => r.context?.urgency) || built.find((r) => r.needs_review);
       showToast(t('check.saved'));
-      nav(flagged ? `/marker/${flagged.marker_code}` : '/record', { replace: true });
+      // Land on the plain-words summary of everything just saved (Lexie: "didn't really get a result")
+      nav('/record?new=' + ctx.date, { replace: true });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 
@@ -191,13 +212,14 @@ export function CheckResults() {
             <input type="checkbox" checked={cycle.menopause} onChange={(e) => setCycle({ ...cycle, menopause: e.target.checked })} />{t('cycle.menopause')}
           </label>
           <div className="small mt8">{phase ? <><b>{t('cycle.phase')}:</b> {t('phase.' + phase)}</> : <span className="muted">{t('cycle.needed')}</span>}</div>
+          {(fromReport.includes('cycleDay') || fromReport.includes('cycleLength')) && <p className="tiny muted" style={{ margin: '6px 0 0' }} data-testid="from-report">{t('cycle.fromReport')}</p>}
         </div>
       )}
       {anyAge && (
         <div className="card mt16">
           <label className="lbl" style={{ marginTop: 0 }}>{t('cycle.age')}</label>
           <input className="field" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} aria-label={t('cycle.age')} />
-          <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('cycle.ageSub')}</p>
+          <p className="tiny muted" style={{ margin: '6px 0 0' }}>{fromReport.includes('age') ? t('cycle.fromReport') : t('cycle.ageSub')}</p>
         </div>
       )}
 
@@ -243,10 +265,10 @@ export function CheckResults() {
                 <select className="field" value={r.unit} onChange={(e) => chooseUnit(i, e.target.value)} disabled={!m} aria-label={t('check.unit')}>
                   {m ? Object.keys(m.units).map((u) => <option key={u} value={u}>{u}</option>) : <option value="">—</option>}
                 </select></div>
-              <div><label className="lbl">{t('check.low')}</label><input className="field" inputMode="decimal" value={r.low} onChange={(e) => editRange(i, 'low', e.target.value)} aria-label={t('check.low')} /></div>
-              <div><label className="lbl">{t('check.high')}</label><input className="field" inputMode="decimal" value={r.high} onChange={(e) => editRange(i, 'high', e.target.value)} aria-label={t('check.high')} /></div>
+              <div><label className="lbl">{t('check.low')}</label><input className="field" inputMode="decimal" value={r.low} placeholder="—" onChange={(e) => editRange(i, 'low', e.target.value)} aria-label={t('check.low')} /></div>
+              <div><label className="lbl">{t('check.high')}</label><input className="field" inputMode="decimal" value={r.high} placeholder="—" onChange={(e) => editRange(i, 'high', e.target.value)} aria-label={t('check.high')} /></div>
             </div>
-            {r.rangeSource && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('range.' + r.rangeSource)}</p>}
+            {r.rangeSource && (r.low !== '' || r.high !== '') && <p className="tiny" style={{ margin: '8px 0 0' }} data-testid="row-range"><b>{t('range.normal')}: {rangeText(r.low, r.high, t, fmtNum)} {r.unit}</b> <span className="muted">· {t('range.' + r.rangeSource)}</span></p>}
             {m && isPhaseMarker(r.code) && !phase && <p className="tiny" style={{ margin: '8px 0 0', color: 'var(--cherry)' }}>{t('cycle.needed')}</p>}
             {ev?.urgency && <p className="tiny" style={{ margin: '8px 0 0', color: '#C62828', fontWeight: 600 }}>{t('urgent.' + ev.urgency)}</p>}
             {ev?.expected && <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('situation.expectedWhy.' + ev.expected)}</p>}

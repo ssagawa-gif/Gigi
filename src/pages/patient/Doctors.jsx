@@ -8,7 +8,7 @@ import { useSession, useData } from '../../lib/session.jsx';
 import { visitEvent, googleCalendarUrl, outlookCalendarUrl, downloadIcs } from '../../lib/calendar.js';
 
 export function FindDoctor() {
-  const { t, fmtMoney } = useI18n();
+  const { t, fmtMoney, fmtFee } = useI18n();
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState(null);
@@ -46,7 +46,7 @@ export function FindDoctor() {
                   <div className="row" style={{ gap: 8 }}><Icon name="video" size={14} />{t('consult.video')}</div>
                   {d.area && <div className="row" style={{ gap: 8 }}><Icon name="pin" size={14} />{d.area}</div>}
                   {!!d.languages?.length && <div className="row" style={{ gap: 8 }}><Icon name="lang" size={14} />{d.languages.join(', ')}</div>}
-                  {d.first_visit_fee != null && <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtMoney(d.first_visit_fee)}</div>}
+                  <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtFee(d.first_visit_fee)}</div>
                   {!!d.insurers?.length && <div className="row" style={{ gap: 8 }}><Icon name="shield" size={14} />{d.insurers.join(', ')}</div>}
                 </div>
               </div>
@@ -60,7 +60,7 @@ export function FindDoctor() {
 
 export function DoctorProfile() {
   const { id } = useParams();
-  const { t, fmtMoney, fmtSlot } = useI18n();
+  const { t, fmtFee, fmtSlot } = useI18n();
   const nav = useNavigate();
   const { showToast } = useSession();
   const [slot, setSlot] = useState(null);
@@ -96,8 +96,8 @@ export function DoctorProfile() {
       {d.bio && <p className="small muted mt16">{d.bio}</p>}
       <h3 className="mt16">{t('doctor.fees')}</h3>
       <div className="card mt8">
-        <div className="row between small"><span>{t('doctor.firstVisit')}</span><b>{fmtMoney(d.first_visit_fee)}</b></div>
-        {d.results_visit_fee != null && <><div className="divider" /><div className="row between small"><span>{t('doctor.resultsVisit')}</span><b>{fmtMoney(d.results_visit_fee)}</b></div></>}
+        <div className="row between small"><span>{t('doctor.firstVisit')}</span><b>{fmtFee(d.first_visit_fee)}</b></div>
+        <div className="divider" /><div className="row between small"><span>{t('doctor.resultsVisit')}</span><b>{fmtFee(d.results_visit_fee)}</b></div>
       </div>
       <h3 className="mt16">{t('doctor.book')}</h3>
       {free.length ? (

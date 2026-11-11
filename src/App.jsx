@@ -2,7 +2,7 @@ import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-d
 import { I18nProvider, useI18n } from './i18n/index.jsx';
 import { SessionProvider, useSession } from './lib/session.jsx';
 import { IS_DEMO, api } from './lib/api.js';
-import { Welcome, Consent, Auth, AboutYou } from './pages/patient/Onboarding.jsx';
+import { Welcome, Consent, Auth, AboutYou, HealthHistory } from './pages/patient/Onboarding.jsx';
 import Home from './pages/patient/Home.jsx';
 import Record from './pages/patient/Record.jsx';
 import { AddToRecord, Upload, CheckResults } from './pages/patient/AddResult.jsx';
@@ -20,6 +20,10 @@ function Guard({ role, children }) {
   if (session === undefined) return <Phone><Loading /></Phone>;
   if (!session) return <Navigate to={role === 'doctor' ? '/doctor/login' : '/'} replace state={{ from: loc.pathname }} />;
   if (session.profile?.role !== role) return <Navigate to={session.profile?.role === 'doctor' ? '/doctor' : '/home'} replace />;
+  // The health history is required once (Dr Kat's feedback): send her there before anything else
+  if (role === 'patient' && !session.profile?.medical_history && !['/about', '/history'].includes(loc.pathname)) {
+    return <Navigate to={session.profile?.reasons?.length ? '/history' : '/about'} replace />;
+  }
   return children;
 }
 
@@ -61,6 +65,7 @@ export default function App() {
             <Route path="/forgot" element={<ForgotPassword />} />
             <Route path="/reset" element={<ResetPassword />} />
             <Route path="/about" element={P(<AboutYou />)} />
+            <Route path="/history" element={P(<HealthHistory />)} />
             <Route path="/home" element={P(<Home />)} />
             <Route path="/record" element={P(<Record />)} />
             <Route path="/add" element={P(<AddToRecord />)} />

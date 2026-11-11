@@ -45,7 +45,9 @@ export function I18nProvider({ children }) {
     const fmtSlot = (d) => `${fmtDate(d, { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtTime(d)}`;
     const fmtMoney = (n) => (n == null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n));
     const fmtNum = (n) => (n == null ? '—' : new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n));
-    return { lang, setLang, t, locale, fmtDate, fmtMonth, fmtTime, fmtSlot, fmtMoney, fmtNum };
+    // A doctor's fee: never shown as empty or "free" when the doctor hasn't set it (tester feedback)
+    const fmtFee = (n) => (n == null || Number(n) === 0 ? t('fee.tbc') : fmtMoney(n));
+    return { lang, setLang, t, locale, fmtDate, fmtMonth, fmtTime, fmtSlot, fmtMoney, fmtFee, fmtNum };
   }, [lang, setLang]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

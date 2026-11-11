@@ -28,7 +28,7 @@ export const MARKERS = [
     units: { 'IU/L': 1, 'mIU/mL': 1 },
     phaseRanges: { early: { 'IU/L': [2.4, 12.6] }, mid: { 'IU/L': [14.0, 95.6] }, luteal: { 'IU/L': [1.0, 11.4] }, post: { 'IU/L': [7.7, 58.5] } } },
   { code: 'estradiol', loinc: '2243-4', unit: 'pg/mL', group: 'reproductive',
-    names: { en: 'Oestradiol (E2)', pt: 'Estradiol (E2)', es: 'Estradiol (E2)' },
+    names: { en: 'Estradiol (E2)', pt: 'Estradiol (E2)', es: 'Estradiol (E2)' },
     synonyms: ['estradiol', 'oestradiol', '17-beta estradiol', '17 beta estradiol', '17β-estradiol', 'e2'],
     units: { 'pg/mL': 1, 'pmol/L': 0.2724 },
     phaseRanges: {

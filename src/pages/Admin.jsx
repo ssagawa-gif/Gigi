@@ -8,7 +8,7 @@ import { useSession, useData } from '../lib/session.jsx';
 
 /** GiGi team only: approve or reject doctors before patients can see them. */
 export default function Admin() {
-  const { t, fmtDate, fmtMoney } = useI18n();
+  const { t, fmtDate, fmtMoney, fmtFee } = useI18n();
   const { showToast } = useSession();
   const [section, setSection] = useState('doctors');
   const [tab, setTab] = useState('pending');
@@ -66,7 +66,7 @@ export default function Admin() {
             <div className="stack small muted" style={{ fontSize: 12.5 }}>
               <div className="row" style={{ gap: 8 }}><Icon name="inbox" size={14} />{d.email}</div>
               {!!d.languages?.length && <div className="row" style={{ gap: 8 }}><Icon name="lang" size={14} />{d.languages.join(', ')}</div>}
-              {d.first_visit_fee != null && <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtMoney(d.first_visit_fee)}</div>}
+              <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtFee(d.first_visit_fee)}</div>
               {d.created_at && <div className="row" style={{ gap: 8 }}><Icon name="calendar" size={14} />{t('admin.signedUp', { date: fmtDate(d.created_at) })}</div>}
             </div>
             {d.bio && <p className="small" style={{ marginBottom: 0 }}>{d.bio}</p>}

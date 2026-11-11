@@ -2,6 +2,7 @@ import Icon from './Icon.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { markerName } from '../lib/markers.js';
 import { latestPerMarker } from '../lib/results.js';
+import { HISTORY_YESNO } from '../pages/patient/Onboarding.jsx';
 
 /**
  * Summary card for doctors, built only from what the patient told GiGi (no AI, nothing invented):
@@ -46,6 +47,28 @@ export default function PatientSummary({ patient = {}, results = [], appts = [],
       <Row icon="clock" label={t('sum.openReviews')}>
         {open.length ? open.map((r) => markerName(r.marker_code, lang)).join(' · ') : <span className="muted">0</span>}
       </Row>
+      {patient.medical_history && (() => {
+        const h = patient.medical_history;
+        const age = patient.birth_date ? Math.floor((Date.now() - new Date(patient.birth_date)) / 31557600000) : null;
+        const yes = HISTORY_YESNO.filter((k) => h[k]?.has);
+        const no = HISTORY_YESNO.filter((k) => h[k]?.has === false);
+        return (
+          <>
+            <Row icon="calendar" label={t('sum.ageCycle')}>
+              {[age != null ? t('sum.age', { n: age }) : null,
+                h.cycle ? t('hist.cycle.' + h.cycle) + (h.cycle_length ? ` (${t('sum.days', { n: h.cycle_length })})` : '') : null,
+                h.contraception ? t('hist.contra.' + h.contraception) + (h.contraception_detail ? `: ${h.contraception_detail}` : '') : null,
+              ].filter(Boolean).join(' · ')}
+            </Row>
+            <Row icon="file" label={t('sum.history')}>
+              <div data-testid="sum-history">
+                {yes.map((k) => <div key={k}><b>{t('hist.short.' + k)}:</b> {h[k].detail || t('hist.yes')}</div>)}
+                {no.length > 0 && <div className="muted">{t('hist.no') + ': ' + no.map((k) => t('hist.short.' + k).toLowerCase()).join(', ')}</div>}
+              </div>
+            </Row>
+          </>
+        );
+      })()}
       {patient.history_note && <Row icon="history" label={t('record.personal')}>{patient.history_note}</Row>}
       <p className="tiny muted" style={{ margin: '8px 0 0' }}>{t('sum.source')}</p>
     </div>

@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Phone, MeAvatar, StatusBadge, Loading, Empty } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import Compare from '../../components/Compare.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
-import { latestPerMarker } from '../../lib/results.js';
+import { latestPerMarker, actionLevel } from '../../lib/results.js';
+import { ActionChip, NormalRange, ResultsSummary } from '../../components/ResultBits.jsx';
 import { markerName, derivedResults } from '../../lib/markers.js';
 
-export function MarkerList({ results, onOpen, grid = true }) {
+export function MarkerList({ results, onOpen, grid = true, forDoctor = false }) {
   const { t, lang, fmtDate, fmtNum } = useI18n();
   const seen = new Set();
   const calc = derivedResults(results).filter((d) => !seen.has(d.code) && seen.add(d.code));
@@ -18,10 +19,11 @@ export function MarkerList({ results, onOpen, grid = true }) {
     <div className={'stack' + (grid ? ' dgrid' : '')}>
       {latestPerMarker(results).map((r) => (
         <div key={r.id} className="card row between tap" onClick={() => onOpen(r.marker_code)}>
-          <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)}</div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div></div>
+          <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)}</div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div><NormalRange r={r} /></div>
           <div style={{ textAlign: 'right' }}>
             <div><b style={{ fontSize: 18 }}>{fmtNum(r.value)}</b> <span className="tiny muted">{r.unit}</span></div>
             <div className="mt8"><StatusBadge status={r.status} ctx={r.context} /></div>
+            {actionLevel(r) !== 'fine' && <div className="mt8"><ActionChip level={actionLevel(r)} small forDoctor={forDoctor} /></div>}
           </div>
         </div>
       ))}
@@ -49,6 +51,8 @@ export default function Record() {
   const nav = useNavigate();
   const { session } = useSession();
   const [tab, setTab] = useState('bloodwork');
+  const [params] = useSearchParams();
+  const newDate = params.get('new');   // just saved: summarise that test first
   const { data, loading } = useData(async () => ({ results: await api.listResults(), reports: await api.listReports() }), []);
   const p = session?.profile;
 
@@ -71,7 +75,12 @@ export default function Record() {
         <>
           {tab === 'bloodwork' && (
             <>
-              <h3 className="mt16" style={{ marginBottom: 10 }}>{t('record.markers')}</h3>
+              {!data.results.length && <h3 className="mt16" style={{ marginBottom: 10 }}>{t('record.markers')}</h3>}
+              {newDate && data.results.some((r) => r.test_date === newDate) && (
+                <ResultsSummary results={data.results.filter((r) => r.test_date === newDate)} onOpen={(c) => nav(`/marker/${c}`)} title={t('glance.newTitle', { date: fmtDate(newDate) })} />
+              )}
+              {data.results.length > 0 && !newDate && <ResultsSummary results={data.results} onOpen={(c) => nav(`/marker/${c}`)} />}
+              {data.results.length > 0 && <h3 className="mt24" style={{ marginBottom: 10 }}>{t('record.all')}</h3>}
               {data.results.length ? <MarkerList results={data.results} onOpen={(c) => nav(`/marker/${c}`)} /> : <Empty>{t('record.empty')}</Empty>}
               {p?.history_note && (
                 <div className="card mt16"><div className="eyebrow" style={{ margin: '0 0 6px' }}>{t('record.personal')}</div><div className="small">{p.history_note}</div></div>

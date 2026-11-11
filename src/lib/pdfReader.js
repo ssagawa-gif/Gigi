@@ -127,8 +127,10 @@ function findDate(lines) {
     { re: /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/, f: (m) => [m[1], m[2], m[3]] },
     { re: /\b(\d{1,2})(?:\s+de)?\s+([a-zà-ü]{3})[a-zà-ü]*\.?(?:\s+de)?\s+(\d{4})\b/i, f: (m) => [m[3], MONTHS[m[2].toLowerCase().slice(0, 3)], m[1]] },
   ];
-  const keyed = lines.filter((l) => /fecha|data|date|colet|extrac|recolh|toma|collected|emiss/i.test(l));
-  for (const group of [keyed, lines]) {
+  const isBirth = (l) => /birth|\bdob\b|nacim|nascim|f\.?\s?nac/i.test(l);   // a date of birth is not the test date
+  const usable = lines.map((l) => (isBirth(l) ? l.replace(/(birth|\bdob\b|nacim\w*|nascim\w*|f\.?\s?nac\.?)\s*[:\-]?\s*\S+/gi, ' ') : l));
+  const keyed = usable.filter((l) => /fecha|data|date|colet|extrac|recolh|toma|collected|emiss/i.test(l));
+  for (const group of [keyed, usable]) {
     for (const l of group) {
       for (const p of pats) {
         const m = p.re.exec(l);
@@ -143,7 +145,39 @@ function findDate(lines) {
   return null;
 }
 
-/** Returns { textFound, rows, date, lab }. */
+/**
+ * Patient details printed in the report header: age (or date of birth), day of the cycle,
+ * usual cycle length, menopause. Anything not found stays null.
+ */
+export function findPatient(lines, testDate) {
+  const text = lines.join('\n');
+  const out = { age: null, cycleDay: null, cycleLength: null, menopause: false };
+  let m = /\b(?:age|edad|idade)\s*[:\-]?\s*(\d{1,2})\b/i.exec(text) || /\b(\d{2})\s*(?:years? old|years|yrs|y\/o|años|anos)\b/i.exec(text);
+  if (m) out.age = Number(m[1]);
+  if (!out.age) {
+    const b = /(?:date of birth|birth date|\bdob\b|fecha de nacimiento|f\.?\s?nac\.?|data de nascimento|nascimento)\s*[:\-]?\s*(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/i.exec(text);
+    if (b) {
+      const [d, mo, y] = [Number(b[1]), Number(b[2]), Number(b[3])];
+      const ref = testDate ? new Date(testDate) : new Date();
+      let a = ref.getFullYear() - y;
+      if (ref.getMonth() + 1 < mo || (ref.getMonth() + 1 === mo && ref.getDate() < d)) a -= 1;
+      if (a > 10 && a < 100) out.age = a;
+    }
+  }
+  m = /(?:cycle day|day of (?:the |your )?cycle|d[ií]a (?:del |de )?ciclo|dia (?:do )?ciclo)\s*[:\-]?\s*(\d{1,2})\b/i.exec(text)
+    || /(?:follicular|luteal|mid-?cycle|ovulat\w*|folicular|l[uú]tea|ovulat[oó]ria|cycles?|ciclos?|irregular|regular)[^\n]{0,20}?\b(?:day|d[ií]a)\s*(\d{1,2})\b/i.exec(text)
+    || /\b(?:day|d[ií]a)\s*(\d{1,2})\s*(?:of|de)\s*(?:a\s*)?(\d{2})(?:[- ]day)?\b/i.exec(text);
+  if (m) { out.cycleDay = Number(m[1]); if (m[2]) out.cycleLength = Number(m[2]); }
+  m = /(?:cycle length|length of (?:the |your )?cycle|usual cycle|duraci[oó]n (?:habitual )?del ciclo|ciclo habitual|dura[cç][aã]o (?:habitual )?do ciclo)\s*[:\-]?\s*(?:about\s*|de\s*)?(\d{2})\b(?!\s*[–-]\s*\d)/i.exec(text)
+    || /\b(\d{2})[- ](?:day|d[ií]as?) (?:cycle|ciclo)/i.exec(text) || /\b(?:day|d[ií]a)\s*\d{1,2}\s*(?:of|de)\s*(?:a\s*)?(\d{2})\b/i.exec(text) || /(?:ciclo|cycle)s? (?:de|of) (\d{2}) (?:d[ií]as|days)/i.exec(text);
+  if (m) out.cycleLength = Number(m[1]);
+  if (out.cycleLength && (out.cycleLength < 15 || out.cycleLength > 60)) out.cycleLength = null;
+  if (out.cycleDay && out.cycleDay > 60) out.cycleDay = null;
+  if (/post-?menopaus|posmenopaus|p[oó]s-?menopausa|menopausal\b/i.test(text)) out.menopause = true;
+  return out;
+}
+
+/** Returns { textFound, rows, date, lab, patient }. */
 export async function readLabPdf(file) {
   if (!file || !/pdf$/i.test(file.type || file.name)) return { textFound: false, rows: [] };
   let lines = [];
@@ -152,10 +186,14 @@ export async function readLabPdf(file) {
   const rows = [];
   for (let i = 0; i < lines.length; i++) {
     const r = parseLine(lines[i], lines[i + 1]);
-    if (r && !rows.some((x) => x.code === r.code)) rows.push(r);
+    if (!r) continue;
+    const j = rows.findIndex((x) => x.code === r.code);
+    if (j < 0) rows.push(r);
+    else if (!rows[j].unitFound && r.unitFound) rows[j] = r;   // a header mention ("progesterone test…") loses to the real result line
   }
   const all = normText(lines.join(' '));
   const lab = LABS.find((l) => all.includes(l));
   const labLine = lab ? lines.find((l) => normText(l).includes(lab)) : null;
-  return { textFound, rows, date: findDate(lines), lab: labLine ? labLine.trim().slice(0, 60) : '' };
+  const date = findDate(lines);
+  return { textFound, rows, date, lab: labLine ? labLine.trim().slice(0, 60) : '', patient: findPatient(lines, date) };
 }
