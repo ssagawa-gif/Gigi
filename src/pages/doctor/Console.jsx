@@ -280,7 +280,14 @@ export function Agenda() {
             <>
               <p className="small">{sel.a.patient?.full_name} · {t('visit.' + sel.a.type)}{sel.a.note ? ` — “${sel.a.note}”` : ''}</p>
               {sel.a.meeting_url && <p className="small"><a href={sel.a.meeting_url} target="_blank" rel="noreferrer">{t('booked.join')}</a> <span className="tiny muted" style={{ wordBreak: 'break-all' }}>{sel.a.meeting_url}</span></p>}
-              <button className="btn btn-ghost btn-small" onClick={async () => { await api.cancelAppointment(sel.a.id); setSel(null); showToast(t('booked.cancelled')); }}>{t('booked.cancel')}</button>
+              <button className="btn btn-ghost btn-small" onClick={async () => {
+                const paid = sel.a.payment_status === 'paid';
+                if (paid && !window.confirm(t('pay.docCancel'))) return;
+                try {
+                  if (paid) await api.payments('cancel', { appointment_id: sel.a.id }); else await api.cancelAppointment(sel.a.id);
+                  setSel(null); showToast(paid ? t('pay.refundedDoc') : t('booked.cancelled'));
+                } catch (e) { showToast(e.message); }
+              }}>{t('booked.cancel')}</button>
             </>
           ) : (
             <button className="btn btn-ghost btn-small mt8" onClick={async () => { await api.deleteSlot(sel.s.id); setSel(null); }}>{t('agenda.remove')}</button>
@@ -374,6 +381,33 @@ export function DoctorNotifications() {
   return <DoctorShell title={t('doc.nav.notifications')}><div style={{ maxWidth: 640 }}><NotificationsList embedded /></div></DoctorShell>;
 }
 
+/** "Receive payments": the doctor opens her Stripe account; patients then pay when booking. */
+function PaymentsSetup() {
+  const { t } = useI18n();
+  const { showToast } = useSession();
+  const [st, setSt] = useState(null);       // { ready, started, dashboard } | { off: true }
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.payments('connect_status').then(setSt).catch((e) => setSt(e.message === 'payments.off' ? { off: true } : { error: e.message }));
+  }, []);
+  if (!st || st.off) return null;   // payments not switched on for GiGi yet
+  async function start() {
+    setBusy(true);
+    try { const r = await api.payments('connect_onboard'); window.location.assign(r.url); }
+    catch (e) { showToast(e.message); setBusy(false); }
+  }
+  return (
+    <div className="card-tan mt16" data-testid="payments-setup">
+      <div style={{ fontWeight: 600 }}>{t('pay.docTitle')}</div>
+      <p className="small" style={{ margin: '6px 0 10px' }}>{st.ready ? t('pay.docReady') : t('pay.docSub')}</p>
+      {st.ready
+        ? st.dashboard && <a className="btn btn-ghost btn-small" href={st.dashboard} target="_blank" rel="noreferrer">{t('pay.docDashboard')}</a>
+        : <button className="btn btn-primary btn-small" disabled={busy} onClick={start}>{st.started ? t('pay.docContinue') : t('pay.docStart')}</button>}
+      {st.error && <p className="tiny error">{st.error}</p>}
+    </div>
+  );
+}
+
 export function DoctorProfileEdit() {
   const { t } = useI18n();
   const { session, showToast } = useSession();
@@ -409,6 +443,7 @@ export function DoctorProfileEdit() {
           <div><label className="lbl">{t('doctor.resultsVisit')} (€)</label><input className="field" inputMode="decimal" value={f.results_visit_fee ?? ''} onChange={set('results_visit_fee')} /></div>
         </div>
         <label className="lbl">{t('doc.bio')}</label><textarea className="field" rows={3} value={f.bio || ''} onChange={set('bio')} />
+        <PaymentsSetup />
         <button className="btn btn-primary mt16" style={{ maxWidth: 240 }} onClick={save}>{t('common.save')}</button>
         <h3 className="mt24">{t('settings.language')}</h3>
         <div className="mt8"><LangPicker onChange={(l) => api.updateProfile({ language: l })} /></div>

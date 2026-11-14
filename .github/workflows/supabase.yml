@@ -4,6 +4,8 @@
 #   SUPABASE_DB_URL        Supabase > Connect > "Session pooler" URI, with the database password filled in
 #   SUPABASE_ACCESS_TOKEN  supabase.com/dashboard/account/tokens > Generate new token
 #   RESEND_API_KEY         resend.com > API Keys (optional: without it, e-mails are skipped)
+#   STRIPE_SECRET_KEY      dashboard.stripe.com > Developers > API keys > Secret key (sk_test_… to test, sk_live_… for real)
+#                          optional: without it, booking stays free and the payment functions answer "payments off"
 name: Update Supabase
 on:
   push:
@@ -117,6 +119,36 @@ jobs:
             echo "::error::Could not deploy notify-email: $(tail -3 out.txt | tr '\n' ' ')"; exit 1
           fi
           tail -2 out.txt
+      - name: Payments (Stripe Connect) — secret, functions and webhook
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        run: |
+          # The functions are always deployed; they do nothing until the Stripe secret exists.
+          for f in payments stripe-webhook payouts; do
+            if ! supabase functions deploy "$f" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api --yes > out.txt 2>&1; then
+              echo "::error::Could not deploy $f: $(tail -3 out.txt | tr '\n' ' ')"; exit 1
+            fi
+          done
+          if [ -z "$STRIPE_SECRET_KEY" ]; then echo "::warning::No STRIPE_SECRET_KEY secret: payments are off, booking stays free."; exit 0; fi
+          case "$STRIPE_SECRET_KEY" in sk_test_*|sk_live_*|rk_test_*|rk_live_*) ;; *) echo "::error::STRIPE_SECRET_KEY should start with sk_test_ or sk_live_ (Stripe > Developers > API keys)."; exit 1;; esac
+          if ! supabase secrets set --yes --project-ref "$PROJECT_REF" STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" > out.txt 2>&1; then
+            echo "::error::Could not set the Stripe secret: $(grep -v 'sk_' out.txt | tail -3 | tr '\n' ' ')"; exit 1
+          fi
+          # Webhook: create it once (the function reads every event back from Stripe, so no signing secret is needed)
+          HOOK="https://$PROJECT_REF.supabase.co/functions/v1/stripe-webhook"
+          if curl -s -u "$STRIPE_SECRET_KEY:" "https://api.stripe.com/v1/webhook_endpoints?limit=100" | jq -e --arg u "$HOOK" '.data[] | select(.url == $u)' > /dev/null; then
+            echo "::notice::Stripe webhook already set up."
+          else
+            code=$(curl -s -o resp.txt -w '%{http_code}' -u "$STRIPE_SECRET_KEY:" https://api.stripe.com/v1/webhook_endpoints \
+              -d url="$HOOK" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=checkout.session.expired" -d description="GiGi bookings")
+            rm -f resp.txt
+            if [ "$code" != "200" ]; then echo "::error::Could not create the Stripe webhook (HTTP $code)."; exit 1; fi
+            echo "::notice::Stripe webhook created."
+          fi
+          mode=$(case "$STRIPE_SECRET_KEY" in *_test_*) echo test;; *) echo LIVE;; esac)
+          echo "::notice::Payments are on (Stripe $mode mode). GiGi keeps 10 % of each paid visit; doctors are paid after the visit."
       - name: E-mail diagnostics (no personal data)
         if: always() && steps.check.outputs.ready == 'true'
         run: |

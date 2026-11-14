@@ -69,16 +69,16 @@ export function seed() {
         response: "This is a little low, which is common in winter. I'd suggest a recheck this month and, if still low, a simple supplement.",
         recommendation: 'recheck', trust_rating: null },
     ],
-    slots: [
-      { id: 's1', doctor_id: MARTA, starts_at: '2026-11-03T10:00:00', minutes: 30, booked: false },
-      { id: 's2', doctor_id: MARTA, starts_at: '2026-11-04T16:30:00', minutes: 30, booked: false },
-      { id: 's3', doctor_id: MARTA, starts_at: '2026-11-06T09:15:00', minutes: 30, booked: false },
-      { id: 's4', doctor_id: MARTA, starts_at: '2026-11-09T18:00:00', minutes: 30, booked: false },
-    ],
+    // sample free times always in the coming days (fixed dates expired, so the demo showed no times)
+    slots: [[2, '10:00'], [3, '16:30'], [5, '09:15'], [8, '18:00']].map(([d, hm], i) => {
+      const t = new Date(Date.now() + d * 864e5); const [h, m] = hm.split(':');
+      t.setHours(Number(h), Number(m), 0, 0);
+      return { id: 's' + (i + 1), doctor_id: MARTA, starts_at: t.toISOString(), minutes: 30, booked: false };
+    }),
     appointments: [],
     shares: [
       { id: 'sh1', patient_id: LAURA, doctor_id: MARTA, scopes: ['bloodwork', 'history'], created_at: '2026-10-01T09:00:00Z',
-        expires_at: '2026-11-30T23:59:00Z', revoked_at: null },
+        expires_at: new Date(Date.now() + 45 * 864e5).toISOString(), revoked_at: null },
     ],
     notifications: [],
     waitlist: [],

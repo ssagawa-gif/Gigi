@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { coversPlan } from './CareTeam.jsx';
 import { Phone, TopBar, Initials, Loading, Empty } from '../../components/ui.jsx';
@@ -71,9 +71,10 @@ export function FindDoctor() {
 
 export function DoctorProfile() {
   const { id } = useParams();
-  const { t, fmtFee, fmtSlot } = useI18n();
+  const { t, lang, fmtFee, fmtMoney, fmtSlot } = useI18n();
   const nav = useNavigate();
   const { showToast } = useSession();
+  const [params] = useSearchParams();
   const [slot, setSlot] = useState(null);
   const [type, setType] = useState('first');
   const [note, setNote] = useState('');
@@ -84,13 +85,20 @@ export function DoctorProfile() {
   if (!d) return <Phone><TopBar /><Empty>{t('find.none')}</Empty></Phone>;
   const free = data.slots.filter((s) => !s.booked && new Date(s.starts_at) > new Date());
 
+  // Doctors who take payments: pay when booking (Stripe Checkout), refund if cancelled > 24 h before
+  const price = d.payments_ready ? (type === 'results' ? (d.results_visit_fee ?? d.first_visit_fee) : d.first_visit_fee) : null;
   async function book() {
     setErr('');
     try {
+      if (d.payments_ready) {
+        const r = await api.payments('checkout', { slot_id: slot, type, note, lang });
+        window.location.assign(r.url);
+        return;
+      }
       const appt = await api.book(slot, { type, note });
       showToast(t('book.done'));
       nav(`/booked/${appt.id}`, { replace: true });
-    } catch (e) { setErr(e.message === 'book.taken' ? t('err.book.taken') : e.message); }
+    } catch (e) { setErr(e.message === 'book.taken' ? t('err.book.taken') : e.message.startsWith('payments.') || e.message.startsWith('book.') ? t('err.' + e.message) : e.message); }
   }
 
   return (
@@ -128,8 +136,10 @@ export function DoctorProfile() {
           <textarea className="field" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
         </>
       )}
+      {params.get('payment') === 'cancelled' && <div className="card-tan small mt16">{t('pay.notPaid')}</div>}
       {err && <div className="error">{err}</div>}
-      <button className="btn btn-primary mt24" disabled={!slot} onClick={book}>{t('doctor.bookTime')}</button>
+      {price != null && slot && <p className="tiny muted mt16" data-testid="pay-policy">{t('pay.policy')}</p>}
+      <button className="btn btn-primary mt24" disabled={!slot} onClick={book}>{price != null ? t('pay.payAndBook', { price: fmtMoney(price) }) : t('doctor.bookTime')}</button>
     </Phone>
   );
 }
@@ -145,12 +155,32 @@ function Info({ icon, label, value }) {
 
 export function Booked() {
   const { id } = useParams();
-  const { t, fmtSlot } = useI18n();
+  const { t, fmtSlot, fmtMoney } = useI18n();
   const nav = useNavigate();
   const { showToast } = useSession();
-  const { data, loading } = useData(() => api.listAppointments(), []);
-  if (loading) return <Phone><Loading /></Phone>;
-  const a = data.find((x) => x.id === id);
+  const [params] = useSearchParams();
+  const paidReturn = params.get('paid') === '1';
+  const [tries, setTries] = useState(0);
+  const { data, loading } = useData(() => api.listAppointments(), [tries]);
+  const a = data?.find((x) => x.id === id);
+  // Back from Stripe: the booking is confirmed by the webhook a few seconds later — check again
+  useEffect(() => {
+    if (!paidReturn || a || tries > 10) return;
+    const h = setTimeout(() => setTries((n) => n + 1), 2000);
+    return () => clearTimeout(h);
+  }, [paidReturn, a, tries]);
+  if (loading && !data) return <Phone><Loading /></Phone>;
+  if (!a && paidReturn && tries <= 10) return <Phone><TopBar close onBack={() => nav('/home')} /><p className="center mt24">{t('pay.confirming')}</p><Loading /></Phone>;
+  const paid = a?.payment_status === 'paid' || a?.payment_status === 'transferred';
+  const early = a && new Date(a.starts_at).getTime() - Date.now() > 24 * 3600000;
+  async function cancelIt() {
+    if (paid && !window.confirm(early ? t('pay.cancelRefund') : t('pay.cancelNoRefund'))) return;
+    try {
+      if (paid) { const r = await api.payments('cancel', { appointment_id: a.id }); showToast(r.refunded ? t('pay.refunded') : t('booked.cancelled')); }
+      else { await api.cancelAppointment(a.id); showToast(t('booked.cancelled')); }
+      nav('/home');
+    } catch (e) { showToast(e.message); }
+  }
   const ev = a?.meeting_url ? visitEvent(a, `${t('booked.calTitle')} ${a.doctor?.full_name || ''}`) : null;
   return (
     <Phone>
@@ -161,6 +191,8 @@ export function Booked() {
           <h1 className="center mt16" style={{ fontSize: 30 }}>{t('booked.title', { doctor: a.doctor?.full_name })}</h1>
           <p className="center">{fmtSlot(a.starts_at)} · {t('visit.' + a.type)}</p>
           <p className="small muted center" style={{ marginTop: -6 }}><Icon name="video" size={14} style={{ verticalAlign: '-2px' }} /> {t('booked.online')}</p>
+          {paid && <p className="center" data-testid="paid"><span className="badge" style={{ background: 'var(--ok-bg)', color: 'var(--ok-ink)' }}>{t('pay.paid', { price: fmtMoney(a.price_cents / 100) })}</span></p>}
+          {paid && <p className="tiny muted center">{t('pay.policy')}</p>}
           {ev && (
             <div className="card mt16">
               <a className="btn btn-primary" href={a.meeting_url} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', background: 'var(--persimmon)' }}>{t('booked.join')}</a>
@@ -177,7 +209,7 @@ export function Booked() {
           <div className="spacer" />
           <button className="btn btn-primary mt24" onClick={() => nav('/plans')}>{t('booked.next')}</button>
           <button className="btn btn-ghost mt8" onClick={() => nav('/home')}>{t('nav.home')}</button>
-          <button className="btn btn-link mt8" onClick={async () => { await api.cancelAppointment(a.id); showToast(t('booked.cancelled')); nav('/home'); }}>{t('booked.cancel')}</button>
+          <button className="btn btn-link mt8" onClick={cancelIt}>{t('booked.cancel')}</button>
         </>
       ) : <p className="center muted">{t('booked.gone')}</p>}
     </Phone>

@@ -270,7 +270,8 @@ export const demoBackend = {
     const db = load(); const id = requireMe(); const r = db.care_team.find((x) => x.id === cid && x.patient_id === id);
     r.invited_at = nowIso(); notify(db, id, 'care_invite', { doctor_name: r.name, invite_email: r.email }, '/care-team'); save(db);
   },
-  async acceptCareInvite() { return false; },   // sample mode has no outside doctors
+  async acceptCareInvite() { return false; },
+  async payments() { throw new Error('payments.off'); },   // sample mode has no Stripe: booking stays free   // sample mode has no outside doctors
 
   async revokeShare(shareId) { const db = load(); const id = requireMe(); const s = db.shares.find((x) => x.id === shareId && x.patient_id === id); s.revoked_at = nowIso(); save(db); },
 

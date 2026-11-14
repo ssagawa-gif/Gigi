@@ -170,6 +170,17 @@ export function makeSupabaseBackend(url, anonKey) {
     },
     async cancelAppointment(id) { ok(await sb.rpc('cancel_appointment', { p_id: id })); fire(); },
 
+    // ---------- Payments (Stripe Connect, edge function `payments`) ----------
+    async payments(action, body = {}) {
+      const { data, error } = await sb.functions.invoke('payments', { body: { action, ...body } });
+      if (error) {
+        let msg = error.message;
+        try { msg = (await error.context.json()).error || msg; } catch { /* not JSON */ }
+        throw new Error(msg);
+      }
+      fire(); return data;
+    },
+
     async listShares() {
       const rows = ok(await sb.from('shares').select('*').order('created_at', { ascending: false }));
       const docs = await doctorsWithNames([...new Set(rows.map((r) => r.doctor_id))]);
