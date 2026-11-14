@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { latestPerMarker, actionLevel } from '../../lib/results.js';
-import { ActionChip, NormalRange, ResultsSummary } from '../../components/ResultBits.jsx';
+import { ActionChip, NormalRange, ResultsSummary, InfoButton } from '../../components/ResultBits.jsx';
 import { markerName, derivedResults } from '../../lib/markers.js';
 
 export function MarkerList({ results, onOpen, grid = true, forDoctor = false }) {
@@ -19,7 +19,7 @@ export function MarkerList({ results, onOpen, grid = true, forDoctor = false }) 
     <div className={'stack' + (grid ? ' dgrid' : '')}>
       {latestPerMarker(results).map((r) => (
         <div key={r.id} className="card row between tap" onClick={() => onOpen(r.marker_code)}>
-          <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)}</div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div><NormalRange r={r} /></div>
+          <div><div className="serif" style={{ fontSize: 19 }}>{markerName(r.marker_code, lang)} <InfoButton code={r.marker_code} r={r} /></div><div className="tiny muted">{fmtDate(r.test_date)}{r.country ? ' · ' + r.country : ''}</div><NormalRange r={r} /></div>
           <div style={{ textAlign: 'right' }}>
             <div><b style={{ fontSize: 18 }}>{fmtNum(r.value)}</b> <span className="tiny muted">{r.unit}</span></div>
             <div className="mt8"><StatusBadge status={r.status} ctx={r.context} /></div>

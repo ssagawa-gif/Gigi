@@ -82,6 +82,17 @@ const T: Record<string, Record<string, (d: any) => Mail>> = {
     pt: (d) => ({ subject: `Hora de marcar seu retorno com ${d.doctor_name}`, title: 'Hora do seu retorno', body: [`Já se passaram ${d.months} meses desde sua consulta com ${d.doctor_name}.`, 'Marque seu retorno no GiGi quando for bom para você.'], cta: 'Marcar meu retorno' }),
     es: (d) => ({ subject: `Es hora de reservar tu revisión con ${d.doctor_name}`, title: 'Es hora de tu revisión', body: [`Han pasado ${d.months} meses desde tu cita con ${d.doctor_name}.`, 'Reserva tu cita de revisión en GiGi cuando te venga bien.'], cta: 'Reservar mi revisión' }),
   },
+  // Sent to a doctor outside GiGi whom the patient added to her care team (the patient's language)
+  care_invite: {
+    en: (d) => ({ subject: `${d.patient_name} invited you to her care team on GiGi`, title: 'You have been invited to GiGi', body: [`${d.patient_name} added you to her care team on GiGi, a women's health app where she keeps her blood tests and health history.`, 'Create your free doctor account with this e-mail address to see the results she shares with you. Your notes and replies stay between you and her.'], cta: 'Join GiGi' }),
+    pt: (d) => ({ subject: `${d.patient_name} convidou você para a equipe de saúde dela no GiGi`, title: 'Você foi convidado(a) para o GiGi', body: [`${d.patient_name} adicionou você à equipe de saúde dela no GiGi, um app de saúde da mulher onde ela guarda seus exames e histórico de saúde.`, 'Crie sua conta médica gratuita com este e-mail para ver os resultados que ela compartilhar. Suas anotações e respostas ficam só entre vocês.'], cta: 'Entrar no GiGi' }),
+    es: (d) => ({ subject: `${d.patient_name} te ha invitado a su equipo de salud en GiGi`, title: 'Te han invitado a GiGi', body: [`${d.patient_name} te ha añadido a su equipo de salud en GiGi, una app de salud de la mujer donde guarda sus análisis e historia de salud.`, 'Crea tu cuenta de médico gratuita con este e-mail para ver los resultados que te comparta. Tus notas y respuestas quedan entre vosotros.'], cta: 'Unirme a GiGi' }),
+  },
+  care_joined: {
+    en: (d) => ({ subject: `${d.doctor_name} joined your care team`, title: 'Your care team is growing', body: [`${d.doctor_name} accepted your invitation and can now see the results you chose to share.`], cta: 'Open my care team' }),
+    pt: (d) => ({ subject: `${d.doctor_name} entrou na sua equipe de saúde`, title: 'Sua equipe de saúde está crescendo', body: [`${d.doctor_name} aceitou seu convite e já pode ver os resultados que você escolheu compartilhar.`], cta: 'Abrir minha equipe' }),
+    es: (d) => ({ subject: `${d.doctor_name} se ha unido a tu equipo de salud`, title: 'Tu equipo de salud crece', body: [`${d.doctor_name} ha aceptado tu invitación y ya puede ver los resultados que elegiste compartir.`], cta: 'Abrir mi equipo' }),
+  },
   appointment_cancelled: {
     en: (d) => ({ subject: `Appointment cancelled: ${d.when}`, title: 'Appointment cancelled', body: [`${d.name} cancelled the appointment on ${d.when}.`], cta: 'Open GiGi' }),
     pt: (d) => ({ subject: `Consulta cancelada: ${d.when}`, title: 'Consulta cancelada', body: [`${d.name} cancelou a consulta de ${d.when}.`], cta: 'Abrir o GiGi' }),
@@ -170,7 +181,10 @@ Deno.serve(async (req) => {
   const when = d.starts_at ? new Date(d.starts_at).toLocaleString(lang === 'en' ? 'en-GB' : lang === 'pt' ? 'pt-BR' : 'es-ES',
     { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid', timeZoneName: 'short' }) : '';
   const mail = tpl({ ...d, name: d.name || p?.full_name || '', when, marker: MARKERS[d.marker_code]?.[lang] || d.marker_code || '' });
-  const link = `${Deno.env.get('APP_URL') || ''}#${record.link || ''}`;
+  // An invitation goes to the invited doctor's address, with the sign-up link, never to the patient
+  const isInvite = record.type === 'care_invite';
+  const to = isInvite ? d.invite_email : u.user.email;
+  const link = `${Deno.env.get('APP_URL') || ''}#${isInvite ? d.invite_link : (record.link || '')}`;
 
   // Visit e-mails: video link + add-to-calendar buttons + .ics attachment
   const isVisit = record.type === 'appointment_confirmed' || record.type === 'appointment_booked';
@@ -182,7 +196,7 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: Deno.env.get('EMAIL_FROM') || 'GiGi <onboarding@resend.dev>',
-      to: u.user.email,
+      to,
       subject: mail.subject,
       html: html(mail, link, Deno.env.get('APP_URL') || ''),
       ...(visit.ics ? { attachments: [{ filename: icsName[lang] || icsName.en, content: btoa(unescape(encodeURIComponent(visit.ics))), content_type: 'text/calendar' }] } : {}),

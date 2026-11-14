@@ -70,6 +70,7 @@ function PatientDesktop({ children, wide }) {
     ['/home', 'home', t('nav.home')],
     ['/record', 'file', t('nav.record')],
     ['/doctors', 'steth', t('nav.doctors')],
+    ['/care-team', 'users', t('nav.care')],
     ['/sharing', 'share', t('nav.sharing')],
     ['/notifications', 'bell', t('notif.title'), unread],
   ];

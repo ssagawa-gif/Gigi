@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Phone, MeAvatar, Bell, Initials, Loading } from '../../components/ui.jsx';
+import CycleCard from '../../components/CycleCard.jsx';
+import { CareTeamCard } from './CareTeam.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
 import { api } from '../../lib/api.js';
@@ -73,19 +75,11 @@ export default function Home() {
             ))}
             {!data.appts.length && !openReviews.length && <div className="card small muted">{t('home.nothingComing')}</div>}
           </div>
+          <CycleCard />
           </div>
           <div>
 
-          {myDoctor?.full_name && (
-            <>
-              <h2 className="mt24">{t('home.yourDoctor')}</h2>
-              <div className="card list-item mt8 tap" onClick={() => nav(`/doctors/${myDoctor.id}`)}>
-                <Initials name={myDoctor.full_name} />
-                <div className="grow"><div className="serif" style={{ fontSize: 18 }}>{myDoctor.full_name}</div><div className="tiny muted">{t('spec.' + myDoctor.specialty)}{myDoctor.area ? ' · ' + myDoctor.area : ''}</div></div>
-                <Icon name="chevron" size={16} />
-              </div>
-            </>
-          )}
+          <CareTeamCard />
 
           <div className="card-tan list-item mt24 tap" onClick={() => nav('/plans')} style={{ cursor: 'pointer' }}>
             <Icon name="sparkle" size={18} />

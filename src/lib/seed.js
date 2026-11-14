@@ -1,3 +1,4 @@
+const isoDaysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 // Sample data from the GiGi MVP App Flow doc (Laura, 31 · Dr Marta Puig). Fictional.
 import { buildResult } from './markers.js';
 
@@ -30,7 +31,10 @@ export function seed() {
         birth_date: '1995-03-14', plan: 'free',
         medical_history: { cycle: 'regular', cycle_length: 28, contraception: 'none', contraception_detail: '',
           allergies: { has: false, detail: '' }, medications: { has: false, detail: '' }, conditions: { has: false, detail: '' },
-          surgeries: { has: false, detail: '' }, cancer: { has: false, detail: '' }, family: { has: false, detail: '' } } },
+          surgeries: { has: false, detail: '' }, cancer: { has: false, detail: '' }, family: { has: false, detail: '' },
+          supplements: { has: false, items: [] }, symptoms: { has: false, detail: '' }, last_illness: { date: '', what: '' } },
+        // two logged periods, relative to today, so the demo cycle card has something to show
+        period_starts: [isoDaysAgo(9), isoDaysAgo(37)] },
       { id: MARTA, role: 'doctor', full_name: 'Dr Marta Puig', language: 'es', country: ES },
       { id: MARC, role: 'doctor', full_name: 'Dr Marc Rovira', language: 'es', country: ES },
       { id: LAIA, role: 'doctor', full_name: 'Dr Laia Soler', language: 'es', country: ES },

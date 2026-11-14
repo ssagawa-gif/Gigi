@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { I18nProvider, useI18n } from './i18n/index.jsx';
 import { SessionProvider, useSession } from './lib/session.jsx';
@@ -9,14 +10,25 @@ import { AddToRecord, Upload, CheckResults } from './pages/patient/AddResult.jsx
 import Marker, { RequestReview } from './pages/patient/Marker.jsx';
 import { FindDoctor, DoctorProfile, Booked } from './pages/patient/Doctors.jsx';
 import { Sharing, Plans, Settings, NotificationsList } from './pages/patient/More.jsx';
+import { CareTeam } from './pages/patient/CareTeam.jsx';
 import { Queue, Agenda, Patients, DoctorNotifications, DoctorProfileEdit } from './pages/doctor/Console.jsx';
 import { Phone, Loading } from './components/ui.jsx';
 import Admin from './pages/Admin.jsx';
 import { ForgotPassword, ResetPassword } from './pages/Password.jsx';
 
 function Guard({ role, children }) {
-  const { session } = useSession();
+  const { session, showToast } = useSession();
   const loc = useLocation();
+  const { t } = useI18n();
+  // A doctor who came from a patient's care-team invitation: link her once she is signed in
+  const isDoctor = session?.profile?.role === 'doctor';
+  useEffect(() => {
+    let token = null;
+    try { token = localStorage.getItem('gigi_invite'); } catch { /* storage blocked */ }
+    if (!isDoctor || !token) return;
+    api.acceptCareInvite(token).then((ok) => { if (ok) showToast(t('care.joinedToast')); })
+      .catch(() => {}).finally(() => { try { localStorage.removeItem('gigi_invite'); } catch { /* ignore */ } });
+  }, [isDoctor]);
   if (session === undefined) return <Phone><Loading /></Phone>;
   if (!session) return <Navigate to={role === 'doctor' ? '/doctor/login' : '/'} replace state={{ from: loc.pathname }} />;
   if (session.profile?.role !== role) return <Navigate to={session.profile?.role === 'doctor' ? '/doctor' : '/home'} replace />;
@@ -74,6 +86,7 @@ export default function App() {
             <Route path="/marker/:code" element={P(<Marker />)} />
             <Route path="/review/:code" element={P(<RequestReview />)} />
             <Route path="/doctors" element={P(<FindDoctor />)} />
+            <Route path="/care-team" element={P(<CareTeam />)} />
             <Route path="/doctors/:id" element={P(<DoctorProfile />)} />
             <Route path="/booked/:id" element={P(<Booked />)} />
             <Route path="/sharing" element={P(<Sharing />)} />

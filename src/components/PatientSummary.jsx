@@ -2,7 +2,7 @@ import Icon from './Icon.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { markerName } from '../lib/markers.js';
 import { latestPerMarker } from '../lib/results.js';
-import { HISTORY_YESNO } from '../pages/patient/Onboarding.jsx';
+import { HISTORY_YESNO, HISTORY_LISTS, itemLine } from '../pages/patient/Onboarding.jsx';
 
 /**
  * Summary card for doctors, built only from what the patient told GiGi (no AI, nothing invented):
@@ -50,7 +50,7 @@ export default function PatientSummary({ patient = {}, results = [], appts = [],
       {patient.medical_history && (() => {
         const h = patient.medical_history;
         const age = patient.birth_date ? Math.floor((Date.now() - new Date(patient.birth_date)) / 31557600000) : null;
-        const yes = HISTORY_YESNO.filter((k) => h[k]?.has);
+        const yes = HISTORY_YESNO.filter((k) => h[k]?.has).sort((a, b) => (b === 'symptoms') - (a === 'symptoms'));   // symptoms first: doctors need them to read results
         const no = HISTORY_YESNO.filter((k) => h[k]?.has === false);
         return (
           <>
@@ -62,7 +62,12 @@ export default function PatientSummary({ patient = {}, results = [], appts = [],
             </Row>
             <Row icon="file" label={t('sum.history')}>
               <div data-testid="sum-history">
-                {yes.map((k) => <div key={k}><b>{t('hist.short.' + k)}:</b> {h[k].detail || t('hist.yes')}</div>)}
+                {yes.map((k) => (
+                  <div key={k}><b>{t('hist.short.' + k)}:</b>{' '}
+                    {HISTORY_LISTS[k] && h[k].items?.length ? h[k].items.map((it) => itemLine(k, it)).join('; ') : (h[k].detail || t('hist.yes'))}
+                  </div>
+                ))}
+                {h.last_illness?.date || h.last_illness?.what ? <div><b>{t('hist.short.lastIll')}:</b> {[h.last_illness.date, h.last_illness.what].filter(Boolean).join(' · ')}</div> : null}
                 {no.length > 0 && <div className="muted">{t('hist.no') + ': ' + no.map((k) => t('hist.short.' + k).toLowerCase()).join(', ')}</div>}
               </div>
             </Row>

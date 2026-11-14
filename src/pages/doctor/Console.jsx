@@ -345,6 +345,8 @@ export function Patients() {
             <div className="mt8" style={{ marginBottom: 16 }}>
               <PatientSummary patient={share?.scopes.includes('history') ? share?.patient : { ...share?.patient, history_note: null, medical_history: null }}
                 results={results || []} appts={extra?.appts || []} reviews={extra?.reviews || []} />
+              {/* Doctors need symptoms and history to read results (14 Nov feedback): say when they weren't shared */}
+              {share && !share.scopes.includes('history') && <div className="card-tan tiny mt8" data-testid="no-history">{t('doc.noHistoryShared')}</div>}
             </div>
             <div className="card">
               <h2 style={{ fontSize: 28 }}>{share?.patient?.full_name}</h2>
@@ -393,7 +395,7 @@ export function DoctorProfileEdit() {
     <DoctorShell title={t('doc.nav.profile')}>
       <div className="card" style={{ maxWidth: 640 }}>
         <div className="grid2">
-          <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{['gyn', 'endo', 'fertility', 'gp'].map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
+          <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{['gyn', 'endo', 'fertility', 'nutri', 'gp'].map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
           <div><label className="lbl">{t('doctor.consultation')}</label><div className="field" style={{ background: 'transparent', border: '1px solid var(--line)' }}>{t('consult.video')}</div></div>
         </div>
         <label className="lbl">{t('doc.meetingUrl')}</label>

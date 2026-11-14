@@ -233,6 +233,45 @@ export const demoBackend = {
     const sh = { id: 'sh-' + uid(), patient_id: id, doctor_id, scopes, created_at: nowIso(), expires_at: new Date(Date.now() + days * 864e5).toISOString(), revoked_at: null };
     db.shares.push(sh); save(db); return sh;
   },
+  // ---------- My care team (same behaviour as the database, simplified) ----------
+  async listCareTeam() {
+    const db = load(); const id = requireMe();
+    return (db.care_team || []).filter((r) => r.patient_id === id).map((r) => ({ ...r, doctor: r.doctor_id ? doctorView(db, db.doctors.find((d) => d.id === r.doctor_id)) : null }));
+  },
+  async addCareMember(m) {
+    const db = load(); const id = requireMe(); db.care_team = db.care_team || [];
+    const row = { id: 'ct-' + uid(), patient_id: id, name: m.name, specialty: m.specialty || null, email: m.email || null, phone: m.phone || null,
+      coverage: m.coverage || null, doctor_id: m.doctor_id || null, share_results: !!m.share_results, share_id: null, invite_token: uid(), invited_at: null, joined_at: null, created_at: nowIso() };
+    if (row.doctor_id && row.share_results) {
+      const sh = { id: 'sh-' + uid(), patient_id: id, doctor_id: row.doctor_id, scopes: ['bloodwork', 'history'], created_at: nowIso(), expires_at: new Date(Date.now() + 365 * 864e5).toISOString(), revoked_at: null };
+      db.shares.push(sh); row.share_id = sh.id;
+    } else if (!row.doctor_id && row.email) {
+      row.invited_at = nowIso();
+      notify(db, id, 'care_invite', { doctor_name: row.name, invite_email: row.email }, '/care-team');
+    }
+    db.care_team.push(row); save(db); return row;
+  },
+  async updateCareMember(cid, patch) {
+    const db = load(); const id = requireMe(); const r = db.care_team.find((x) => x.id === cid && x.patient_id === id);
+    if ('share_results' in patch && patch.share_results !== r.share_results && r.doctor_id) {
+      if (patch.share_results) {
+        const sh = { id: 'sh-' + uid(), patient_id: id, doctor_id: r.doctor_id, scopes: ['bloodwork', 'history'], created_at: nowIso(), expires_at: new Date(Date.now() + 365 * 864e5).toISOString(), revoked_at: null };
+        db.shares.push(sh); r.share_id = sh.id;
+      } else { const s = db.shares.find((x) => x.id === r.share_id); if (s) s.revoked_at = nowIso(); r.share_id = null; }
+    }
+    Object.assign(r, patch); save(db);
+  },
+  async removeCareMember(cid) {
+    const db = load(); const id = requireMe(); const r = db.care_team.find((x) => x.id === cid && x.patient_id === id);
+    const s = r && db.shares.find((x) => x.id === r.share_id); if (s) s.revoked_at = nowIso();
+    db.care_team = db.care_team.filter((x) => x.id !== cid); save(db);
+  },
+  async inviteCareDoctor(cid) {
+    const db = load(); const id = requireMe(); const r = db.care_team.find((x) => x.id === cid && x.patient_id === id);
+    r.invited_at = nowIso(); notify(db, id, 'care_invite', { doctor_name: r.name, invite_email: r.email }, '/care-team'); save(db);
+  },
+  async acceptCareInvite() { return false; },   // sample mode has no outside doctors
+
   async revokeShare(shareId) { const db = load(); const id = requireMe(); const s = db.shares.find((x) => x.id === shareId && x.patient_id === id); s.revoked_at = nowIso(); save(db); },
 
   // ---------- notifications ----------

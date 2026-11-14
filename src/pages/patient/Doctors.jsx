@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { coversPlan } from './CareTeam.jsx';
 import { Phone, TopBar, Initials, Loading, Empty } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
@@ -11,16 +12,21 @@ export function FindDoctor() {
   const { t, fmtMoney, fmtFee } = useI18n();
   const nav = useNavigate();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState(null);
+  const [params] = useSearchParams();
+  const { session } = useSession();
+  const plan = session?.profile?.insurer || '';
+  const [filter, setFilter] = useState(params.get('spec') ? ['spec', params.get('spec')] : null);
   const { data, loading } = useData(() => api.listDoctors(), []);
-  const filters = [['spec', 'gyn'], ['spec', 'endo'], ['spec', 'fertility'], ['lang', 'English'], ['lang', 'Portuguese']];
+  // Katie: "which doctors are covered by my insurance" — shown first when she has a plan
+  const filters = [...(plan ? [['covered', plan]] : []), ['spec', 'gyn'], ['spec', 'endo'], ['spec', 'nutri'], ['spec', 'fertility'], ['lang', 'English'], ['lang', 'Portuguese']];
   const list = (data || []).filter((d) => {
     const hay = `${d.full_name} ${t('spec.' + d.specialty)} ${d.area}`.toLowerCase();
     if (q && !hay.includes(q.toLowerCase())) return false;
     if (filter?.[0] === 'spec' && d.specialty !== filter[1]) return false;
     if (filter?.[0] === 'lang' && !d.languages?.includes(filter[1])) return false;
+    if (filter?.[0] === 'covered' && !coversPlan(d, plan)) return false;
     return true;
-  });
+  }).sort((a, b) => coversPlan(b, plan) - coversPlan(a, plan));
   return (
     <Phone nav wide>
       <h1>{t('find.title')}</h1>
@@ -31,7 +37,7 @@ export function FindDoctor() {
       <div className="chips mt16">
         {filters.map(([k, v]) => {
           const on = filter?.[1] === v;
-          return <button key={v} className={'chip' + (on ? ' on' : '')} onClick={() => setFilter(on ? null : [k, v])}>{k === 'spec' ? t('spec.' + v) : t('lang.' + v)}</button>;
+          return <button key={v} className={'chip' + (on ? ' on' : '')} onClick={() => setFilter(on ? null : [k, v])}>{k === 'spec' ? t('spec.' + v) : k === 'covered' ? t('find.covered', { plan: v }) : t('lang.' + v)}</button>;
         })}
       </div>
       {loading ? <Loading /> : (
@@ -40,7 +46,12 @@ export function FindDoctor() {
           <div className="stack dgrid">
             {list.length ? list.map((d) => (
               <div key={d.id} className="card tap" onClick={() => nav(`/doctors/${d.id}`)}>
-                <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 20 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)}</div></div></div>
+                <div className="row between" style={{ alignItems: 'flex-start' }}>
+                  <div className="row"><Initials name={d.full_name} /><div><div className="serif" style={{ fontSize: 20 }}>{d.full_name}</div><div className="tiny muted">{t('spec.' + d.specialty)}</div></div></div>
+                  {plan && (coversPlan(d, plan)
+                    ? <span className="badge" style={{ background: 'var(--ok-bg)', color: 'var(--ok-ink)' }} data-testid="covered">{t('find.coveredBadge')}</span>
+                    : <span className="badge neutral">{t('find.notCovered')}</span>)}
+                </div>
                 <div className="divider" />
                 <div className="stack small muted" style={{ fontSize: 12.5 }}>
                   <div className="row" style={{ gap: 8 }}><Icon name="video" size={14} />{t('consult.video')}</div>

@@ -8,6 +8,8 @@ import { useSession } from '../../lib/session.jsx';
 import { MARKERS, byCode, assess, buildResult, SITUATIONS, situationPhase, markerName, standardRange, phaseFromCycle, progesteroneTiming, isPhaseMarker, needsAge } from '../../lib/markers.js';
 import { readLabPdf } from '../../lib/pdfReader.js';
 import { rangeText } from '../../lib/results.js';
+import { InfoButton } from '../../components/ResultBits.jsx';
+import { cycleDayOn, avgCycle, isoOf } from '../../lib/cycle.js';
 
 /** Age in whole years on a given date, from an ISO birth date. */
 export function ageOn(birth, when) {
@@ -56,6 +58,24 @@ export function Upload() {
   const nav = useNavigate();
   const input = useRef();
   const [err, setErr] = useState('');
+  const [params] = useSearchParams();
+  // A report shared to GiGi from another app (WhatsApp → Share → GiGi) waits in the browser cache
+  useEffect(() => {
+    if (params.get('shared') !== '1' || !('caches' in window)) return;
+    caches.open('gigi-share').then(async (c) => {
+      const res = await c.match('shared-report');
+      if (!res) return;
+      const blob = await res.blob();
+      await c.delete('shared-report');
+      const name = decodeURIComponent(res.headers.get('X-Name') || 'report.pdf');
+      take(new File([blob], name, { type: blob.type || 'application/pdf' }));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function take(f) {
+    if (f.size > 8 * 1024 * 1024) { setErr(t('upload.tooBig')); return; }
+    nav('/add/check', { state: { file: f } });
+  }
   function pick(e) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -77,6 +97,7 @@ export function Upload() {
         <input ref={input} type="file" accept="application/pdf,image/*" hidden onChange={pick} data-testid="file" />
       </div>
       {err && <div className="error">{err}</div>}
+      <div className="card-tan mt16 small" data-testid="whatsapp-tip"><b>{t('upload.waTitle')}</b><div className="tiny muted mt8">{t('upload.waHow')}</div></div>
       <div className="row mt16 tiny muted" style={{ alignItems: 'flex-start' }}><Icon name="shield" size={14} /><span>{t('upload.private')}</span></div>
       <div className="row mt8 tiny muted" style={{ alignItems: 'flex-start' }}><Icon name="info" size={14} /><span>{t('upload.notDiagnosis')}</span></div>
     </Phone>
@@ -96,10 +117,18 @@ export function CheckResults() {
   const [ctx, setCtx] = useState({ lab: '', country: session?.profile?.country || 'ES', date: new Date().toISOString().slice(0, 10) });
   // Start from what she told GiGi in her health history; the report header (if read) wins below
   const hist = session?.profile?.medical_history || {};
-  const [cycle, setCycle] = useState({ day: '', length: hist.cycle_length || 28, menopause: hist.cycle === 'menopause' });
+  const starts = session?.profile?.period_starts || [];
+  const [cycle, setCycle] = useState(() => ({ day: String(cycleDayOn(starts, isoOf(new Date())) ?? ''), length: avgCycle(starts, hist.cycle_length || 28), menopause: hist.cycle === 'menopause' }));
   const [age, setAge] = useState(() => String(ageOn(session?.profile?.birth_date, new Date()) ?? ''));
   const [sit, setSit] = useState({ pill: hist.contraception === 'pill', breastfeeding: false, no_period: hist.cycle === 'none', thyroid_med: false, notes: '' });
   const [fromReport, setFromReport] = useState([]);   // which details came from the report header
+  // Test date changed by hand: the cycle day follows her period log (unless the report gave one)
+  useEffect(() => {
+    if (!starts.length || fromReport.includes('cycleDay')) return;
+    const d = cycleDayOn(starts, ctx.date);
+    setCycle((c) => ({ ...c, day: d ? String(d) : c.day }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.date]);
   const [rows, setRows] = useState([emptyRow()]);
   const [reading, setReading] = useState(!!file && /pdf$/i.test(file.type || file.name));
   const [readInfo, setReadInfo] = useState(null);   // { found, textFound }
@@ -130,6 +159,11 @@ export function CheckResults() {
       if (pt.cycleDay || pt.cycleLength || pt.menopause) {
         setCycle((c) => ({ day: pt.cycleDay ? String(pt.cycleDay) : c.day, length: pt.cycleLength || c.length, menopause: pt.menopause || c.menopause }));
         if (pt.cycleDay) got.push('cycleDay'); if (pt.cycleLength) got.push('cycleLength');
+      }
+      // no cycle day on the report: work it out from her period log for the test date
+      if (!pt.cycleDay && !pt.menopause && res.date) {
+        const d = cycleDayOn(starts, res.date);
+        if (d) { setCycle((c) => ({ ...c, day: String(d) })); got.push('fromLog'); }
       }
       setFromReport(got);
       setReadInfo({ found: res.rows.length, textFound: res.textFound });
@@ -213,6 +247,7 @@ export function CheckResults() {
           </label>
           <div className="small mt8">{phase ? <><b>{t('cycle.phase')}:</b> {t('phase.' + phase)}</> : <span className="muted">{t('cycle.needed')}</span>}</div>
           {(fromReport.includes('cycleDay') || fromReport.includes('cycleLength')) && <p className="tiny muted" style={{ margin: '6px 0 0' }} data-testid="from-report">{t('cycle.fromReport')}</p>}
+          {fromReport.includes('fromLog') && <p className="tiny muted" style={{ margin: '6px 0 0' }} data-testid="from-log">{t('cycle.fromLog')}</p>}
         </div>
       )}
       {anyAge && (
@@ -257,6 +292,7 @@ export function CheckResults() {
                   </optgroup>
                 ))}
               </select>
+              {r.code && <InfoButton code={r.code} r={{ ref_low: r.low, ref_high: r.high, unit: r.unit, context: { phase } }} />}
               {ev && <StatusBadge status={ev.status} ctx={ev} />}
             </div>
             <div className="grid2">

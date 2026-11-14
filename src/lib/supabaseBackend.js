@@ -180,6 +180,40 @@ export function makeSupabaseBackend(url, anonKey) {
       const row = ok(await sb.from('shares').insert({ doctor_id, scopes, expires_at: new Date(Date.now() + days * 864e5).toISOString() }).select().single());
       fire(); return row;
     },
+    // ---------- My care team (14 Nov) ----------
+    async listCareTeam() {
+      const rows = ok(await sb.from('care_team').select('*').order('created_at'));
+      const docs = await doctorsWithNames([...new Set(rows.map((r) => r.doctor_id).filter(Boolean))]);
+      return rows.map((r) => ({ ...r, doctor: r.doctor_id ? docs[r.doctor_id] : null }));
+    },
+    async addCareMember(m) {
+      const row = ok(await sb.from('care_team').insert({ name: m.name, specialty: m.specialty || null, email: m.email || null, phone: m.phone || null,
+        coverage: m.coverage || null, doctor_id: m.doctor_id || null, share_results: !!m.share_results }).select().single());
+      if (row.doctor_id && row.share_results) {
+        const sh = await this.createShare({ doctor_id: row.doctor_id, scopes: ['bloodwork', 'history'], days: 365 });
+        ok(await sb.from('care_team').update({ share_id: sh.id }).eq('id', row.id));
+      } else if (!row.doctor_id && row.email) {
+        ok(await sb.rpc('invite_care_doctor', { p_id: row.id }));
+      }
+      fire(); return row;
+    },
+    async updateCareMember(id, patch) {
+      const cur = ok(await sb.from('care_team').select('*').eq('id', id).single());
+      const next = { ...patch };
+      if ('share_results' in patch && patch.share_results !== cur.share_results && cur.doctor_id) {
+        if (patch.share_results) next.share_id = (await this.createShare({ doctor_id: cur.doctor_id, scopes: ['bloodwork', 'history'], days: 365 })).id;
+        else { if (cur.share_id) await this.revokeShare(cur.share_id); next.share_id = null; }
+      }
+      ok(await sb.from('care_team').update(next).eq('id', id)); fire();
+    },
+    async removeCareMember(id) {
+      const cur = ok(await sb.from('care_team').select('*').eq('id', id).single());
+      if (cur.share_id) await this.revokeShare(cur.share_id);
+      ok(await sb.from('care_team').delete().eq('id', id)); fire();
+    },
+    async inviteCareDoctor(id) { ok(await sb.rpc('invite_care_doctor', { p_id: id })); fire(); },
+    async acceptCareInvite(token) { return ok(await sb.rpc('accept_care_invite', { p_token: token })); },
+
     async revokeShare(id) { ok(await sb.from('shares').update({ revoked_at: new Date().toISOString() }).eq('id', id)); fire(); },
 
     async listNotifications() { return ok(await sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)); },

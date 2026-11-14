@@ -13,6 +13,11 @@ import './styles.css';
 
 import { api } from './lib/api.js';
 
+// Installable web app + "share a lab report to GiGi" (WhatsApp, Mail…). Not in the single-file demo.
+if ('serviceWorker' in navigator && location.protocol === 'https:' && import.meta.env.MODE !== 'single') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
 // Wait for a password-reset link (if any) to be turned into a session before the router starts.
 Promise.resolve(api.ready).finally(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(<App />);

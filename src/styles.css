@@ -195,3 +195,7 @@ table.cmp td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical
   .mobile-only { display: none; }
   .desk-only { display: block; }
 }
+
+/* small explainer pop-up (marker "i") */
+.modal-back { position: fixed; inset: 0; background: rgba(30, 10, 14, .35); display: flex; align-items: center; justify-content: center; z-index: 80; padding: 20px; }
+.modal { max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.18); }

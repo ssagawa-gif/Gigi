@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Phone, TopBar, LangPicker, PasswordField } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
@@ -86,6 +86,9 @@ export function Auth({ role = 'patient' }) {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const [mode, setMode] = useState(params.get('mode') || 'signup');
+  // Care-team invitation link (#/doctor/login?mode=signup&invite=…): kept until she is signed in,
+  // even if she first has to confirm her e-mail in another tab
+  useEffect(() => { const inv = params.get('invite'); if (inv) { try { localStorage.setItem('gigi_invite', inv); } catch { /* ignore */ } } }, [params]);
   const [form, setForm] = useState({ full_name: '', email: '', password: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -190,8 +193,10 @@ export function AboutYou() {
   );
 }
 
-// ---------- Health history (Dr Kat's feedback): required once, editable later in Settings ----------
-export const HISTORY_YESNO = ['allergies', 'medications', 'conditions', 'surgeries', 'cancer', 'family'];
+// ---------- Health history (Dr Kat + 14 Nov feedback): required once, editable later in Settings ----------
+// Lists with one row per item: medicines and supplements (name, dose, how often), allergies (what, reaction, how much triggers it)
+export const HISTORY_LISTS = { medications: ['name', 'dose', 'freq'], supplements: ['name', 'dose', 'freq'], allergies: ['substance', 'reaction', 'amount'] };
+export const HISTORY_YESNO = ['allergies', 'medications', 'supplements', 'conditions', 'surgeries', 'cancer', 'family', 'symptoms'];
 const CYCLE_OPTS = ['regular', 'irregular', 'none', 'menopause'];
 const CONTRA_OPTS = ['none', 'pill', 'hormonal_other', 'non_hormonal'];
 
@@ -202,6 +207,11 @@ export function historyComplete(h, birth) {
   return HISTORY_YESNO.every((k) => h[k]?.has === true || h[k]?.has === false);
 }
 
+/** "Levothyroxine 50 µg · every morning" — one line per list item, for summaries. */
+export function itemLine(kind, it) {
+  return HISTORY_LISTS[kind].map((f) => (it[f] || '').trim()).filter(Boolean).join(' · ');
+}
+
 export function HealthHistory() {
   const { t } = useI18n();
   const nav = useNavigate();
@@ -209,24 +219,48 @@ export function HealthHistory() {
   const { session, refresh, showToast } = useSession();
   const p = session?.profile || {};
   const [birth, setBirth] = useState(p.birth_date || '');
-  const [h, setH] = useState(() => ({
-    cycle: '', cycle_length: '', contraception: '', contraception_detail: '',
-    ...Object.fromEntries(HISTORY_YESNO.map((k) => [k, { has: null, detail: '' }])),
-    ...(p.medical_history || {}),
-  }));
+  const [h, setH] = useState(() => {
+    const base = {
+      cycle: '', cycle_length: '', contraception: '', contraception_detail: '', last_illness: { date: '', what: '' },
+      ...Object.fromEntries(HISTORY_YESNO.map((k) => [k, { has: null, detail: '' }])),
+      ...(p.medical_history || {}),
+    };
+    for (const k of Object.keys(HISTORY_LISTS)) {   // older answers kept their details as text: turn them into a first row
+      const v = base[k] || { has: null };
+      const items = v.items?.length ? v.items : v.detail ? [{ [HISTORY_LISTS[k][0]]: v.detail }] : [];
+      base[k] = { ...v, items };
+    }
+    return base;
+  });
   const [busy, setBusy] = useState(false);
   const editing = !!p.medical_history;
   const set = (patch) => setH({ ...h, ...patch });
   const needsLength = h.cycle === 'regular' || h.cycle === 'irregular';
   const ok = historyComplete({ ...h, cycle_length: needsLength ? Number(h.cycle_length) || null : null }, birth);
 
+  function setItem(k, idx, field, value) {
+    const items = [...(h[k].items || [])];
+    items[idx] = { ...items[idx], [field]: value };
+    set({ [k]: { ...h[k], items } });
+  }
+  const addItem = (k) => set({ [k]: { ...h[k], items: [...(h[k].items || []), {}] } });
+  const removeItem = (k, idx) => set({ [k]: { ...h[k], items: h[k].items.filter((_, j) => j !== idx) } });
+
   async function save() {
     setBusy(true);
     const clean = {
       ...h,
       cycle_length: needsLength ? Number(h.cycle_length) || null : null,
-      contraception_detail: h.contraception_detail.trim(),
-      ...Object.fromEntries(HISTORY_YESNO.map((k) => [k, { has: h[k].has, detail: h[k].has ? (h[k].detail || '').trim() : '' }])),
+      contraception_detail: (h.contraception_detail || '').trim(),
+      last_illness: { date: h.last_illness?.date || '', what: (h.last_illness?.what || '').trim() },
+      ...Object.fromEntries(HISTORY_YESNO.map((k) => {
+        const v = h[k];
+        if (HISTORY_LISTS[k]) {
+          const items = v.has ? (v.items || []).map((it) => Object.fromEntries(HISTORY_LISTS[k].map((f) => [f, (it[f] || '').trim()]))).filter((it) => Object.values(it).some(Boolean)) : [];
+          return [k, { has: v.has, items, detail: items.map((it) => itemLine(k, it)).join('; ') }];
+        }
+        return [k, { has: v.has, detail: v.has ? (v.detail || '').trim() : '' }];
+      })),
       updated_at: new Date().toISOString(),
     };
     await api.updateProfile({ birth_date: birth, medical_history: clean });
@@ -271,14 +305,40 @@ export function HealthHistory() {
           <label className="lbl">{t('hist.q.' + k)}</label>
           <div className="chips mt8">
             {[true, false].map((v) => (
-              <button key={String(v)} type="button" className={'chip' + (h[k].has === v ? ' on' : '')} onClick={() => set({ [k]: { ...h[k], has: v } })}>{t(v ? 'hist.yes' : 'hist.no')}</button>
+              <button key={String(v)} type="button" className={'chip' + (h[k].has === v ? ' on' : '')}
+                onClick={() => set({ [k]: { ...h[k], has: v, ...(HISTORY_LISTS[k] && v && !(h[k].items || []).length ? { items: [{}] } : {}) } })}>
+                {t(v ? 'hist.yes' : 'hist.no')}
+              </button>
             ))}
           </div>
-          {h[k].has && (
+          {h[k].has && HISTORY_LISTS[k] && (
+            <div className="stack mt8" style={{ gap: 8 }}>
+              {(h[k].items || []).map((it, idx) => (
+                <div key={idx} className="card-tan" style={{ padding: 10 }} data-testid={`hist-${k}-row`}>
+                  <div className="grid3" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr auto', gap: 6, alignItems: 'center' }}>
+                    {HISTORY_LISTS[k].map((f) => (
+                      <input key={f} className="field" style={{ margin: 0 }} value={it[f] || ''} onChange={(e) => setItem(k, idx, f, e.target.value)}
+                        placeholder={t(`hist.f.${k}.${f}`)} aria-label={t(`hist.f.${k}.${f}`)} />
+                    ))}
+                    <button type="button" className="icon-btn" onClick={() => removeItem(k, idx)} aria-label={t('hist.remove')}><Icon name="close" size={14} /></button>
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => addItem(k)}>{t('hist.addRow.' + k)}</button>
+            </div>
+          )}
+          {h[k].has && !HISTORY_LISTS[k] && (
             <textarea className="field mt8" rows={2} value={h[k].detail} onChange={(e) => set({ [k]: { ...h[k], detail: e.target.value } })} placeholder={t('hist.ph.' + k)} aria-label={t('hist.q.' + k)} />
           )}
         </div>
       ))}
+
+      <label className="lbl">{t('hist.lastIll')}</label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
+        <input className="field" type="month" value={h.last_illness?.date || ''} max={new Date().toISOString().slice(0, 7)} onChange={(e) => set({ last_illness: { ...h.last_illness, date: e.target.value } })} aria-label={t('hist.lastIllWhen')} />
+        <input className="field" value={h.last_illness?.what || ''} onChange={(e) => set({ last_illness: { ...h.last_illness, what: e.target.value } })} placeholder={t('hist.lastIllPh')} aria-label={t('hist.lastIllWhat')} />
+      </div>
+      <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('hist.optional')}</p>
 
       <div className="row mt16 tiny muted" style={{ alignItems: 'flex-start' }}><Icon name="shield" size={14} /><span>{t('hist.private')}</span></div>
       <div className="spacer" />

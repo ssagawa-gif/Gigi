@@ -173,7 +173,9 @@ export function findPatient(lines, testDate) {
   if (m) out.cycleLength = Number(m[1]);
   if (out.cycleLength && (out.cycleLength < 15 || out.cycleLength > 60)) out.cycleLength = null;
   if (out.cycleDay && out.cycleDay > 60) out.cycleDay = null;
-  if (/post-?menopaus|posmenopaus|p[oó]s-?menopausa|menopausal\b/i.test(text)) out.menopause = true;
+  // "Postmenopausal" in the patient details, not in a reference-range line ("Postmenopausia: 25,8 - 134,8")
+  const meno = /(post-?menopaus\w*|posmenop[aá]us\w*|p[oó]s-?menopausa|menopausal)\b(?!\s*[:：]?\s*[<>≤≥]?\s*\d)/i;
+  if (lines.some((l) => meno.test(l) && !/\d+[.,]?\d*\s*[-–]\s*\d/.test(l))) out.menopause = true;
   return out;
 }
 

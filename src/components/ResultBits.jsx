@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import Icon from './Icon.jsx';
+import { markerInfo } from '../lib/markerInfo.js';
 import { useI18n } from '../i18n/index.jsx';
 import { markerName, isPhaseMarker } from '../lib/markers.js';
 import { latestPerMarker, actionLevel, overallAction, actionRank, rangeText, cycleText } from '../lib/results.js';
@@ -69,7 +71,7 @@ export function ResultsSummary({ results, onOpen, title }) {
           {flagged.map((r) => (
             <button key={r.id} className="option" style={{ padding: '10px 12px' }} onClick={() => onOpen?.(r.marker_code)}>
               <div style={{ textAlign: 'left' }}>
-                <div className="small" style={{ fontWeight: 600 }}>{plainOutcome(r, t, lang)}</div>
+                <div className="small" style={{ fontWeight: 600 }}>{plainOutcome(r, t, lang)} <InfoButton code={r.marker_code} r={r} /></div>
                 <NormalRange r={r} />
               </div>
               <div className="row" style={{ gap: 6 }}><ActionChip level={actionLevel(r)} small /><Icon name="chevron" size={14} /></div>
@@ -78,5 +80,36 @@ export function ResultsSummary({ results, onOpen, title }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Small "i" next to a marker name: a basic intro to the marker and its normal range (Lexie + Katie). */
+export function InfoButton({ code, r }) {
+  const { t, lang, fmtNum } = useI18n();
+  const [open, setOpen] = useState(false);
+  const info = markerInfo(code, lang);
+  if (!info) return null;
+  const first = info.what.split(/(?<=\.)\s/)[0];   // the first sentence is the basic intro
+  const rg = r ? rangeText(r.ref_low, r.ref_high, t, fmtNum) : '';
+  return (
+    <>
+      {/* a span, not a button: it sits inside clickable rows that are buttons themselves */}
+      <span role="button" tabIndex={0} className="icon-btn" style={{ padding: 2, verticalAlign: 'middle', cursor: 'pointer' }} aria-label={t('info.open', { marker: markerName(code, lang) })}
+        data-testid="info-btn" onClick={(e) => { e.stopPropagation(); setOpen(true); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setOpen(true); } }}>
+        <Icon name="info" size={15} />
+      </span>
+      {open && (
+        <div className="modal-back" role="dialog" aria-modal="true" onClick={(e) => { e.stopPropagation(); setOpen(false); }}>
+          <div className="modal card" onClick={(e) => e.stopPropagation()} data-testid="info-pop">
+            <div className="row between"><div className="serif" style={{ fontSize: 22 }}>{markerName(code, lang)}</div>
+              <button className="icon-btn" onClick={() => setOpen(false)} aria-label={t('common.close')}><Icon name="close" size={16} /></button></div>
+            <p className="small" style={{ lineHeight: 1.5 }}>{first}</p>
+            {rg && <p className="small" style={{ margin: 0 }}><b>{t('range.normal')}:</b> {rg} {r.unit}{isPhaseMarker(code) && r.context?.phase ? ` (${t('phase.' + r.context.phase)})` : ''}</p>}
+            {isPhaseMarker(code) && <p className="tiny muted">{t('info.phaseNote')}</p>}
+            <a className="small" href={`#/marker/${code}`} onClick={() => setOpen(false)}>{t('info.more')}</a>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
