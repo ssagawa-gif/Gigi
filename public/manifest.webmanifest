@@ -14,6 +14,6 @@
     "action": "./share-target",
     "method": "POST",
     "enctype": "multipart/form-data",
-    "params": { "files": [{ "name": "report", "accept": ["application/pdf", ".pdf", "image/*"] }] }
+    "params": { "files": [{ "name": "report", "accept": ["application/pdf", ".pdf", "image/*", "application/zip", ".zip"] }] }
   }
 }

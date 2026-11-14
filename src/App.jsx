@@ -6,7 +6,7 @@ import { IS_DEMO, api } from './lib/api.js';
 import { Welcome, Consent, Auth, AboutYou, HealthHistory } from './pages/patient/Onboarding.jsx';
 import Home from './pages/patient/Home.jsx';
 import Record from './pages/patient/Record.jsx';
-import { AddToRecord, Upload, CheckResults } from './pages/patient/AddResult.jsx';
+import { AddToRecord, Upload, CheckResults, WhatsAppImport } from './pages/patient/AddResult.jsx';
 import Marker, { RequestReview } from './pages/patient/Marker.jsx';
 import { FindDoctor, DoctorProfile, Booked } from './pages/patient/Doctors.jsx';
 import { Sharing, Plans, Settings, NotificationsList } from './pages/patient/More.jsx';
@@ -82,6 +82,7 @@ export default function App() {
             <Route path="/record" element={P(<Record />)} />
             <Route path="/add" element={P(<AddToRecord />)} />
             <Route path="/add/upload" element={P(<Upload />)} />
+            <Route path="/add/whatsapp" element={P(<WhatsAppImport />)} />
             <Route path="/add/check" element={P(<CheckResults />)} />
             <Route path="/marker/:code" element={P(<Marker />)} />
             <Route path="/review/:code" element={P(<RequestReview />)} />

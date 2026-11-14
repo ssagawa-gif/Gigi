@@ -10,6 +10,7 @@ import { readLabPdf } from '../../lib/pdfReader.js';
 import { rangeText } from '../../lib/results.js';
 import { InfoButton } from '../../components/ResultBits.jsx';
 import { cycleDayOn, avgCycle, isoOf } from '../../lib/cycle.js';
+import { unzipChat, chatImport } from '../../lib/chatImport.js';
 
 /** Age in whole years on a given date, from an ISO birth date. */
 export function ageOn(birth, when) {
@@ -72,15 +73,24 @@ export function Upload() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  function take(f) {
+  async function take(f) {
+    // A WhatsApp chat export (.zip): pull out the lab-report PDFs and check them one by one
+    if (/\.zip$/i.test(f.name) || /zip/.test(f.type)) {
+      if (f.size > 200 * 1024 * 1024) { setErr(t('upload.tooBig')); return; }
+      try {
+        const { pdfs, photos } = await unzipChat(f);
+        chatImport.items = pdfs.map((file) => ({ file, info: null, done: false }));
+        chatImport.photos = photos;
+        nav('/add/whatsapp');
+      } catch { setErr(t('wa.badZip')); }
+      return;
+    }
     if (f.size > 8 * 1024 * 1024) { setErr(t('upload.tooBig')); return; }
     nav('/add/check', { state: { file: f } });
   }
   function pick(e) {
     const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 8 * 1024 * 1024) { setErr(t('upload.tooBig')); return; }
-    nav('/add/check', { state: { file: f } });
+    if (f) take(f);
   }
   return (
     <Phone>
@@ -94,7 +104,7 @@ export function Upload() {
         <Icon name="upload" size={30} style={{ color: 'var(--cherry)' }} />
         <div style={{ fontWeight: 600, marginTop: 8 }}>{t('upload.choose')}</div>
         <div className="tiny muted">{t('upload.max')}</div>
-        <input ref={input} type="file" accept="application/pdf,image/*" hidden onChange={pick} data-testid="file" />
+        <input ref={input} type="file" accept="application/pdf,image/*,.zip,application/zip" hidden onChange={pick} data-testid="file" />
       </div>
       {err && <div className="error">{err}</div>}
       <div className="card-tan mt16 small" data-testid="whatsapp-tip"><b>{t('upload.waTitle')}</b><div className="tiny muted mt8">{t('upload.waHow')}</div></div>
@@ -200,6 +210,11 @@ export function CheckResults() {
         report_id: report.id }));
       await api.addResults(built);
       showToast(t('check.saved'));
+      // From a WhatsApp chat: mark it done and go back to the list while reports are left
+      if (state?.chatIndex != null && chatImport.items[state.chatIndex]) {
+        chatImport.items[state.chatIndex].done = true;
+        if (chatImport.items.some((x) => !x.done)) { nav('/add/whatsapp', { replace: true }); return; }
+      }
       // Land on the plain-words summary of everything just saved (Lexie: "didn't really get a result")
       nav('/record?new=' + ctx.date, { replace: true });
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
@@ -320,6 +335,50 @@ export function CheckResults() {
       {err && <div className="error">{err}</div>}
       <button className="btn btn-primary mt16" disabled={!valid || busy || reading} onClick={save}>{t('check.save')}</button>
       <button className="btn btn-ghost mt8" onClick={() => nav(-1)}>{t('common.cancel')}</button>
+    </Phone>
+  );
+}
+
+/** Reports found in a WhatsApp chat export: each one is read here, then checked and saved one by one. */
+export function WhatsAppImport() {
+  const { t, fmtDate } = useI18n();
+  const nav = useNavigate();
+  const [, force] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      for (const it of chatImport.items) {
+        if (it.info) continue;
+        try { const r = await readLabPdf(it.file); it.info = { date: r.date, lab: r.lab, n: r.rows.length }; }
+        catch { it.info = { n: 0 }; }
+        if (alive) force((x) => x + 1);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const items = chatImport.items;
+  const reports = items.map((it, i) => ({ ...it, i })).filter((it) => !it.info || it.info.n > 0);
+  const others = items.filter((it) => it.info && it.info.n === 0).length;
+  return (
+    <Phone>
+      <TopBar title={t('wa.title')} />
+      {!items.length && <div className="card small">{t('wa.none')}</div>}
+      {!!items.length && <p className="small muted" style={{ marginTop: 0 }}>{t('wa.found', { n: reports.length })}</p>}
+      <div className="stack mt8" style={{ gap: 10 }}>
+        {reports.map((it) => (
+          <div key={it.i} className="card row between" data-testid="wa-report">
+            <div>
+              <div style={{ fontWeight: 600 }}>{it.info?.date ? fmtDate(it.info.date) : it.file.name}</div>
+              <div className="tiny muted">{it.info ? `${it.info.lab ? it.info.lab + ' · ' : ''}${t('wa.results', { n: it.info.n })}` : t('wa.reading')}</div>
+            </div>
+            {it.done ? <span className="badge" style={{ background: 'var(--ok-bg)', color: 'var(--ok-ink)' }}>{t('wa.added')}</span>
+              : <button className="btn btn-primary btn-small" disabled={!it.info} onClick={() => nav('/add/check', { state: { file: it.file, chatIndex: it.i } })}>{t('wa.check')}</button>}
+          </div>
+        ))}
+      </div>
+      {(others > 0 || chatImport.photos > 0) && <p className="tiny muted mt16">{t('wa.skipped', { pdfs: others, photos: chatImport.photos })}</p>}
+      <div className="row mt16 tiny muted" style={{ alignItems: 'flex-start' }}><Icon name="shield" size={14} /><span>{t('wa.private')}</span></div>
+      {items.length > 0 && items.every((x) => x.done || (x.info && x.info.n === 0)) && <button className="btn btn-primary mt16" onClick={() => nav('/record')}>{t('wa.done')}</button>}
     </Phone>
   );
 }
