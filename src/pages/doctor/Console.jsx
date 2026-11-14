@@ -13,6 +13,8 @@ import { api, IS_DEMO } from '../../lib/api.js';
 import { useSession, useData } from '../../lib/session.jsx';
 import { markerName, SITUATIONS, isPhaseMarker } from '../../lib/markers.js';
 import { NormalRange } from '../../components/ResultBits.jsx';
+import { COUNTRIES, useCountryName } from '../patient/AddResult.jsx';
+import { DOCTOR_SPECS } from '../patient/Doctors.jsx';
 import { byMarker, rangeText, cycleText } from '../../lib/results.js';
 
 export function DoctorShell({ children, title, actions }) {
@@ -413,6 +415,8 @@ export function DoctorProfileEdit() {
   const { session, showToast } = useSession();
   const { data, loading } = useData(() => api.getDoctor(session?.user?.id), [session?.user?.id]);
   const [f, setF] = useState(null);
+  const [country, setCountry] = useState(session?.profile?.country || 'ES');
+  const countryName = useCountryName();
   useEffect(() => { if (data && !f) setF({ ...data, specialty: data.specialty || 'gyn', consultation: data.consultation || 'both', languages: (data.languages || []).join(', '), insurers: (data.insurers || []).join(', ') }); }, [data, f]);
   if (loading || !f) return <DoctorShell title={t('doc.nav.profile')}><Loading /></DoctorShell>;
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -420,6 +424,7 @@ export function DoctorProfileEdit() {
     const split = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
     const link = (f.meeting_url || '').trim();
     if (link && !/^https:\/\/\S+$/.test(link)) { showToast(t('doc.meetingInvalid')); return; }
+    if (country !== session?.profile?.country) await api.updateProfile({ country });
     await api.updateDoctor({ specialty: f.specialty, area: f.area, consultation: 'video', meeting_url: link || null, bio: f.bio,
       languages: split(f.languages), insurers: split(f.insurers),
       first_visit_fee: f.first_visit_fee === '' ? null : Number(f.first_visit_fee), results_visit_fee: f.results_visit_fee === '' || f.results_visit_fee == null ? null : Number(f.results_visit_fee) });
@@ -429,13 +434,17 @@ export function DoctorProfileEdit() {
     <DoctorShell title={t('doc.nav.profile')}>
       <div className="card" style={{ maxWidth: 640 }}>
         <div className="grid2">
-          <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{['gyn', 'endo', 'fertility', 'nutri', 'gp'].map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
+          <div><label className="lbl">{t('doc.specialty')}</label><select className="field" value={f.specialty || ''} onChange={set('specialty')}>{DOCTOR_SPECS.map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}</select></div>
           <div><label className="lbl">{t('doctor.consultation')}</label><div className="field" style={{ background: 'transparent', border: '1px solid var(--line)' }}>{t('consult.video')}</div></div>
         </div>
         <label className="lbl">{t('doc.meetingUrl')}</label>
         <input className="field" type="url" value={f.meeting_url || ''} onChange={set('meeting_url')} placeholder="https://meet.google.com/abc-defg-hij" />
         <p className="tiny muted" style={{ margin: '6px 0 0' }}>{t('doc.meetingHint')}</p>
-        <label className="lbl">{t('doc.area')}</label><input className="field" value={f.area || ''} onChange={set('area')} />
+        <div className="grid2">
+          <div><label className="lbl">{t('find.country')}</label>
+            <select className="field" value={country} onChange={(e) => setCountry(e.target.value)}>{COUNTRIES.map((c) => <option key={c} value={c}>{countryName(c)}</option>)}</select></div>
+          <div><label className="lbl">{t('doc.area')}</label><input className="field" value={f.area || ''} onChange={set('area')} /></div>
+        </div>
         <label className="lbl">{t('doctor.languages')}</label><input className="field" value={f.languages} onChange={set('languages')} placeholder="Spanish, Catalan, English" />
         <label className="lbl">{t('doctor.insurers')}</label><input className="field" value={f.insurers} onChange={set('insurers')} />
         <div className="grid2">

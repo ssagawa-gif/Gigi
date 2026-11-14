@@ -44,7 +44,7 @@ function activeShare(db, patient_id, doctor_id) {
 }
 function doctorView(db, d) {
   const p = db.profiles.find((x) => x.id === d.id);
-  return { ...d, full_name: p?.full_name };
+  return { ...d, full_name: p?.full_name, country: p?.country };
 }
 
 export const demoBackend = {

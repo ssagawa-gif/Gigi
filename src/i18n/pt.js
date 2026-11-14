@@ -532,4 +532,8 @@ export default {
   'err.payments.doctorNotReady': "Este médico ainda não pode receber pagamentos.",
   'err.payments.noPrice': "Este médico ainda não definiu o preço desta consulta.",
   'err.book.payFirst': "Este médico recebe pagamentos: agende com “Pagar e agendar”.",
+  'find.specialty': "Especialidade",
+  'find.allSpecs': "Todas as especialidades",
+  'find.country': "País",
+  'find.allCountries': "Todos os países",
 };

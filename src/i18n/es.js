@@ -532,4 +532,8 @@ export default {
   'err.payments.doctorNotReady': "Este médico aún no puede recibir pagos.",
   'err.payments.noPrice': "Este médico aún no ha fijado el precio de esta cita.",
   'err.book.payFirst': "Este médico cobra por la app: reserva con “Pagar y reservar”.",
+  'find.specialty': "Especialidad",
+  'find.allSpecs': "Todas las especialidades",
+  'find.country': "País",
+  'find.allCountries': "Todos los países",
 };

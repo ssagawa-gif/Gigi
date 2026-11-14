@@ -31,9 +31,9 @@ export function makeSupabaseBackend(url, anonKey) {
   async function doctorsWithNames(ids) {
     if (!ids.length) return {};
     const docs = ok(await sb.from('doctors').select('*').in('id', ids));
-    const profs = ok(await sb.from('profiles').select('id, full_name').in('id', ids));
-    const names = Object.fromEntries(profs.map((p) => [p.id, p.full_name]));
-    return Object.fromEntries(docs.map((d) => [d.id, { ...d, full_name: names[d.id] }]));
+    const profs = ok(await sb.from('profiles').select('id, full_name, country').in('id', ids));
+    const byId = Object.fromEntries(profs.map((p) => [p.id, p]));
+    return Object.fromEntries(docs.map((d) => [d.id, { ...d, full_name: byId[d.id]?.full_name, country: byId[d.id]?.country }]));
   }
   async function profilesById(ids) {
     if (!ids.length) return {};

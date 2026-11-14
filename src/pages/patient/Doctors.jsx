@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { coversPlan } from './CareTeam.jsx';
+import { useCountryName } from './AddResult.jsx';
+
+export const DOCTOR_SPECS = ['gyn', 'endo', 'fertility', 'nutri', 'gp'];
 import { Phone, TopBar, Initials, Loading, Empty } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { useI18n } from '../../i18n/index.jsx';
@@ -15,16 +18,19 @@ export function FindDoctor() {
   const [params] = useSearchParams();
   const { session } = useSession();
   const plan = session?.profile?.insurer || '';
-  const [filter, setFilter] = useState(params.get('spec') ? ['spec', params.get('spec')] : null);
+  // Ste, 14 Nov: choose specialty and country from two drop-downs (no language chips)
+  const [spec, setSpec] = useState(params.get('spec') || '');
+  const [country, setCountry] = useState('');
+  const [covered, setCovered] = useState(false);
+  const countryName = useCountryName();
   const { data, loading } = useData(() => api.listDoctors(), []);
-  // Katie: "which doctors are covered by my insurance" — shown first when she has a plan
-  const filters = [...(plan ? [['covered', plan]] : []), ['spec', 'gyn'], ['spec', 'endo'], ['spec', 'nutri'], ['spec', 'fertility'], ['lang', 'English'], ['lang', 'Portuguese']];
+  const countries = [...new Set((data || []).map((d) => d.country).filter(Boolean))].sort((a, b) => countryName(a).localeCompare(countryName(b)));
   const list = (data || []).filter((d) => {
     const hay = `${d.full_name} ${t('spec.' + d.specialty)} ${d.area}`.toLowerCase();
     if (q && !hay.includes(q.toLowerCase())) return false;
-    if (filter?.[0] === 'spec' && d.specialty !== filter[1]) return false;
-    if (filter?.[0] === 'lang' && !d.languages?.includes(filter[1])) return false;
-    if (filter?.[0] === 'covered' && !coversPlan(d, plan)) return false;
+    if (spec && d.specialty !== spec) return false;
+    if (country && d.country !== country) return false;
+    if (covered && !coversPlan(d, plan)) return false;
     return true;
   }).sort((a, b) => coversPlan(b, plan) - coversPlan(a, plan));
   return (
@@ -34,12 +40,21 @@ export function FindDoctor() {
         <Icon name="search" size={16} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('find.search')} style={{ border: 0, background: 'transparent', outline: 'none', flex: 1, padding: '8px 0' }} />
       </div>
-      <div className="chips mt16">
-        {filters.map(([k, v]) => {
-          const on = filter?.[1] === v;
-          return <button key={v} className={'chip' + (on ? ' on' : '')} onClick={() => setFilter(on ? null : [k, v])}>{k === 'spec' ? t('spec.' + v) : k === 'covered' ? t('find.covered', { plan: v }) : t('lang.' + v)}</button>;
-        })}
+      <div className="grid2 mt16" data-testid="doctor-filters">
+        <select className="field" style={{ margin: 0 }} value={spec} onChange={(e) => setSpec(e.target.value)} aria-label={t('find.specialty')}>
+          <option value="">{t('find.allSpecs')}</option>
+          {DOCTOR_SPECS.map((k) => <option key={k} value={k}>{t('spec.' + k)}</option>)}
+        </select>
+        <select className="field" style={{ margin: 0 }} value={country} onChange={(e) => setCountry(e.target.value)} aria-label={t('find.country')}>
+          <option value="">{t('find.allCountries')}</option>
+          {countries.map((c) => <option key={c} value={c}>{countryName(c)}</option>)}
+        </select>
       </div>
+      {plan && (
+        <div className="chips mt8">
+          <button className={'chip' + (covered ? ' on' : '')} onClick={() => setCovered(!covered)}>{t('find.covered', { plan })}</button>
+        </div>
+      )}
       {loading ? <Loading /> : (
         <>
           <p className="tiny muted mt16">{t('find.count', { n: list.length })}</p>
@@ -55,7 +70,7 @@ export function FindDoctor() {
                 <div className="divider" />
                 <div className="stack small muted" style={{ fontSize: 12.5 }}>
                   <div className="row" style={{ gap: 8 }}><Icon name="video" size={14} />{t('consult.video')}</div>
-                  {d.area && <div className="row" style={{ gap: 8 }}><Icon name="pin" size={14} />{d.area}</div>}
+                  {(d.area || d.country) && <div className="row" style={{ gap: 8 }}><Icon name="pin" size={14} />{[d.area, d.country && countryName(d.country)].filter(Boolean).join(' · ')}</div>}
                   {!!d.languages?.length && <div className="row" style={{ gap: 8 }}><Icon name="lang" size={14} />{d.languages.join(', ')}</div>}
                   <div className="row" style={{ gap: 8 }}><Icon name="euro" size={14} />{t('doctor.firstVisit')} {fmtFee(d.first_visit_fee)}</div>
                   {!!d.insurers?.length && <div className="row" style={{ gap: 8 }}><Icon name="shield" size={14} />{d.insurers.join(', ')}</div>}

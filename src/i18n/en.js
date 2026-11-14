@@ -532,4 +532,8 @@ export default {
   'err.payments.doctorNotReady': "This doctor can't take payments yet.",
   'err.payments.noPrice': "This doctor hasn't set a price for this visit yet.",
   'err.book.payFirst': "This doctor takes payments: please book with “Pay and book”.",
+  'find.specialty': "Specialty",
+  'find.allSpecs': "All specialties",
+  'find.country': "Country",
+  'find.allCountries': "All countries",
 };
